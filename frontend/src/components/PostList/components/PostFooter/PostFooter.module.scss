@@ -1,0 +1,67 @@
+.post-footer {
+    padding: 14px 18px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    background: linear-gradient(to right, rgba(250, 250, 250, 0.95), rgba(255, 255, 255, 0.95));
+  }
+  
+  .interaction-buttons {
+    display: flex;
+    align-items: center;
+  }
+  
+  .interaction-button {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 14px;
+    margin-right: 18px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+      transform: translateY(-2px);
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+    
+    &.liked {
+      color: #f44336;
+    }
+  }
+  
+  .interaction-icon {
+    margin-right: 8px;
+  }
+  
+  .interaction-count {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  // Animation for like button
+  @keyframes heartBeat {
+    0% {
+      transform: scale(1);
+    }
+    14% {
+      transform: scale(1.3);
+    }
+    28% {
+      transform: scale(1);
+    }
+    42% {
+      transform: scale(1.3);
+    }
+    70% {
+      transform: scale(1);
+    }
+  }
+  
+  .interaction-button.liked .interaction-icon {
+    animation: heartBeat 1s;
+  }
