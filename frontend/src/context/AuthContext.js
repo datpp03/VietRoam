@@ -1,43 +1,58 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { verifyUser } from '~/services/authService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null); // Thêm token vào state
   const [loading, setLoading] = useState(true);
 
-  // Khôi phục trạng thái user khi app khởi động
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('token');
+    if (savedUser && savedToken) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setToken(savedToken);
+        verifyUser(savedToken)
+          .then(data => {
+            if (!data.success || !data.valid) {
+              logout();
+            }
+          })
+          .catch(err => {
+            console.error('Lỗi xác minh token:', err);
+            logout();
+          });
       } catch (err) {
-        console.error('Lỗi parse user từ localStorage:', err);
-        localStorage.removeItem('user');
+        console.error('Lỗi parse user:', err);
+        logout();
       }
     }
     setLoading(false);
   }, []);
 
-  // Đăng nhập
-  const login = (userData) => {
+  const login = (userData, tokenData) => {
     setUser(userData);
+    setToken(tokenData);
     localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', tokenData);
   };
 
-  // Đăng xuất
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Hook để sử dụng Auth dễ hơn
 export const useAuth = () => useContext(AuthContext);

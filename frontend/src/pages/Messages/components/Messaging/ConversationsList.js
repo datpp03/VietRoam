@@ -1,137 +1,227 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import styles from "./ConversationsList.module.scss"
-import classNames from "classnames/bind"
-import { Search, Plus, MessageSquare } from "lucide-react"
+import { useState, useEffect } from "react";
+import styles from "./ConversationsList.module.scss";
+import classNames from "classnames/bind";
+import { Search, Plus, MessageSquare, X } from "lucide-react";
+import messageService from "~/services/messageService";
 
-const cx = classNames.bind(styles)
+const cx = classNames.bind(styles);
 
-// Helper function to format dates
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffInSeconds = Math.floor((now - date) / 1000)
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
 
   if (diffInSeconds < 60) {
-    return "Just now"
+    return "Just now";
   } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60)
-    return `${minutes}m ago`
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m ago`;
   } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours}h ago`
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h ago`;
   } else if (diffInSeconds < 604800) {
-    const days = Math.floor(diffInSeconds / 86400)
-    return `${days}d ago`
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d ago`;
   } else {
-    return date.toLocaleDateString()
+    return date.toLocaleDateString();
   }
-}
+};
 
 const ConversationItem = ({ conversation, users, currentUser, isActive, onClick }) => {
-  // Find the other participant in the conversation
-  const partnerId = conversation.participants.find((id) => id !== currentUser._id)
-  const partner = users[partnerId]
+  const partnerId = conversation.participants.find((id) => id !== currentUser.id);
+  const partner = users[partnerId];
 
-  if (!partner) return null
+  if (!partner) return null;
 
-  const { last_message, unread_count } = conversation
-  const isLastMessageFromMe = last_message?.sender_id === currentUser._id
-  const hasUnread = unread_count > 0
+  const { last_message, unread_count } = conversation;
+  const isLastMessageFromMe = last_message?.sender_id === currentUser.id;
+  const hasUnread = unread_count > 0;
 
-  // Truncate the message content if it's too long
   const truncateContent = (content) => {
-    if (!content) return ""
-    return content.length > 30 ? content.substring(0, 30) + "..." : content
-  }
+    if (!content) return "";
+    return content.length > 30 ? content.substring(0, 30) + "..." : content;
+  };
 
-  // Determine if there's media in the last message
-  const hasMedia = last_message?.media && last_message.media.length > 0
+  const hasMedia = last_message?.media && last_message.media.length > 0;
   const messagePreview = hasMedia
     ? isLastMessageFromMe
       ? "You: Sent a media"
       : "Sent a media"
     : isLastMessageFromMe
       ? `You: ${truncateContent(last_message?.content)}`
-      : truncateContent(last_message?.content)
+      : truncateContent(last_message?.content);
 
   return (
     <div
-      className={cx("conversation-item", {
-        active: isActive,
-        unread: hasUnread && !isActive,
-      })}
+      className={cx("conversation-item", { active: isActive, unread: hasUnread && !isActive })}
       onClick={() => onClick(conversation)}
     >
       <div className={cx("avatar-container")}>
         <img
-          src={partner.avatar || "/placeholder.svg?height=100&width=100"}
-          alt={partner.username}
+          src={partner.profile_picture || "/placeholder.svg?height=100&width=100"}
+          alt={partner.full_name}
           className={cx("avatar")}
         />
         {partner.isOnline && <span className={cx("online-indicator")}></span>}
       </div>
-
       <div className={cx("conversation-details")}>
         <div className={cx("conversation-header")}>
-          <h4 className={cx("username")}>{partner.username}</h4>
+          <h4 className={cx("username")}>{partner.full_name}</h4>
           <span className={cx("timestamp")}>{formatDate(last_message?.createdAt)}</span>
         </div>
-
         <div className={cx("conversation-preview")}>
           <p className={cx("last-message", { unread: hasUnread })}>{messagePreview}</p>
-
           {hasUnread && <span className={cx("unread-count")}>{unread_count}</span>}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-const ConversationsList = ({ conversations, users, currentUser, activeConversation, onSelectConversation }) => {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filteredConversations, setFilteredConversations] = useState([])
+const UserSearchItem = ({ user, onSelect }) => {
+  return (
+    <div className={cx("conversation-item")} onClick={() => onSelect(user)}>
+      <div className={cx("avatar-container")}>
+        <img
+          src={user.profile_picture || "/placeholder.svg?height=100&width=100"}
+          alt={user.full_name}
+          className={cx("avatar")}
+        />
+        {user.isOnline && <span className={cx("online-indicator")}></span>}
+      </div>
+      <div className={cx("conversation-details")}>
+        <div className={cx("conversation-header")}>
+          <h4 className={cx("username")}>{user.full_name}</h4>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-  // Filter conversations based on search query
+const ConversationsList = ({ conversations, users, currentUser, activeConversation, onSelectConversation, token }) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredConversations, setFilteredConversations] = useState([]);
+  const [showNewMessage, setShowNewMessage] = useState(false);
+  const [searchUsers, setSearchUsers] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
   useEffect(() => {
-    if (!searchQuery) {
-      setFilteredConversations(conversations)
-      return
+    if (!searchQuery || showNewMessage) {
+      setFilteredConversations(conversations);
+      return;
     }
 
     const filtered = conversations.filter((conversation) => {
-      const partnerId = conversation.participants.find((id) => id !== currentUser._id)
-      const partner = users[partnerId]
+      const partnerId = conversation.participants.find((id) => id !== currentUser.id);
+      const partner = users[partnerId];
+      return partner?.full_name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
-      return partner?.username.toLowerCase().includes(searchQuery.toLowerCase())
-    })
+    setFilteredConversations(filtered);
+  }, [searchQuery, conversations, users, currentUser, showNewMessage]);
 
-    setFilteredConversations(filtered)
-  }, [searchQuery, conversations, users, currentUser])
+  useEffect(() => {
+    if (!showNewMessage || !searchQuery) {
+      setSearchUsers([]);
+      return;
+    }
+
+    const search = async () => {
+      try {
+        setSearchLoading(true);
+        messageService.setAuthToken(token);
+        const { success, users } = await messageService.searchUsers(searchQuery);
+        if (success) {
+          setSearchUsers(users);
+        }
+      } catch (error) {
+        console.error("Error searching users:", error);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    const timeout = setTimeout(search, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery, showNewMessage, token]);
+
+  const handleNewMessage = () => {
+    setShowNewMessage(true);
+    setSearchQuery("");
+  };
+
+  const handleSelectUser = (selectedUser) => {
+    const conversationId = [currentUser.id, selectedUser._id].sort().join("_");
+    const existingConversation = conversations.find((conv) => conv.conversation_id === conversationId);
+
+    if (existingConversation) {
+      onSelectConversation(existingConversation);
+    } else {
+      const newConversation = {
+        _id: conversationId,
+        conversation_id: conversationId,
+        participants: [currentUser.id, selectedUser._id],
+        last_message: null,
+        unread_count: 0,
+      };
+      onSelectConversation(newConversation);
+    }
+
+    setShowNewMessage(false);
+    setSearchQuery("");
+    setSearchUsers([]);
+  };
+
+  const handleCloseNewMessage = () => {
+    setShowNewMessage(false);
+    setSearchQuery("");
+    setSearchUsers([]);
+  };
 
   return (
     <div className={cx("conversations-list")}>
       <div className={cx("list-header")}>
-        <h2>Messages</h2>
-        <button className={cx("new-message-button")} aria-label="New message">
-          <Plus size={22} />
-        </button>
+        <h2>{showNewMessage ? "New Message" : "Messages"}</h2>
+        {!showNewMessage ? (
+          <button className={cx("new-message-button")} onClick={handleNewMessage} aria-label="New message">
+            <Plus size={22} />
+          </button>
+        ) : (
+          <button className={cx("new-message-button")} onClick={handleCloseNewMessage} aria-label="Close">
+            <X size={22} />
+          </button>
+        )}
       </div>
-
       <div className={cx("search-container")}>
         <Search size={18} className={cx("search-icon")} />
         <input
           type="text"
-          placeholder="Search conversations"
+          placeholder={showNewMessage ? "Search mutual followers..." : "Search conversations"}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className={cx("search-input")}
         />
       </div>
-
       <div className={cx("conversations-container")}>
-        {filteredConversations.length > 0 ? (
+        {showNewMessage ? (
+          searchLoading ? (
+            <div className={cx("no-conversations")}>
+              <span>Loading...</span>
+            </div>
+          ) : searchUsers.length > 0 ? (
+            searchUsers.map((user) => (
+              <UserSearchItem key={user._id} user={user} onSelect={handleSelectUser} />
+            ))
+          ) : (
+            <div className={cx("no-conversations")}>
+              <Search size={40} />
+              <h3>No mutual followers found</h3>
+              <p>Try a different search term or follow someone to start messaging</p>
+            </div>
+          )
+        ) : filteredConversations.length > 0 ? (
           filteredConversations.map((conversation) => (
             <ConversationItem
               key={conversation._id}
@@ -161,7 +251,7 @@ const ConversationsList = ({ conversations, users, currentUser, activeConversati
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ConversationsList
+export default ConversationsList;

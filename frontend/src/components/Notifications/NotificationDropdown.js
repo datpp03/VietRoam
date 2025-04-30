@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, forwardRef } from "react"
 import styles from "./NotificationDropdown.module.scss"
 import classNames from "classnames/bind"
 import NotificationList from "./NotificationList"
@@ -8,7 +8,7 @@ import { sampleNotifications } from "./sampleNotifications"
 
 const cx = classNames.bind(styles)
 
-const NotificationDropdown = ({ children }) => {
+const NotificationDropdown = forwardRef(({ children }, ref) => {  // <- sửa ở đây
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const dropdownRef = useRef(null)
@@ -18,7 +18,7 @@ const NotificationDropdown = ({ children }) => {
     setNotifications(sampleNotifications)
   }, [])
 
-  const unreadCount = notifications.filter((notification) => !notification.is_read).length
+  // const unreadCount = notifications.filter((notification) => !notification.is_read).length
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen)
@@ -53,7 +53,7 @@ const NotificationDropdown = ({ children }) => {
   }, [])
 
   return (
-    <div className={cx("notification-dropdown-container")} ref={dropdownRef}>
+    <div className={cx("notification-dropdown-container")} ref={ref}>
       <div onClick={toggleDropdown}>{children}</div>
 
       {isOpen && (
@@ -67,6 +67,6 @@ const NotificationDropdown = ({ children }) => {
       )}
     </div>
   )
-}
+})
 
 export default NotificationDropdown

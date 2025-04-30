@@ -1,34 +1,60 @@
-import { Message, User } from '../../models';
-import mongoose from 'mongoose';
+import { Message, User, Follow } from "../../models";
+import mongoose from "mongoose";
+
+console.log("Follow model:", Follow); // Debug Follow
 
 class MessageController {
-  // Lấy danh sách cuộc trò chuyện của người dùng
   async getConversations(req, res) {
     try {
+      console.log("getConversations: req.user:", req.user);
       const userId = req.user.id;
-      
-      // Tìm tất cả tin nhắn mà người dùng là người gửi hoặc người nhận
+
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ success: false, message: "Invalid user ID" });
+      }
+
+      if (!Follow) {
+        console.error("Follow model is undefined");
+        return res.status(500).json({ success: false, message: "Internal server error: Follow model not found" });
+      }
+
+      const following = await Follow.find({ follower: userId }).select("following");
+      console.log("getConversations: following:", following);
+      const followingIds = following.map((f) => f.following);
+
+      const mutualFollowers = await Follow.find({
+        follower: { $in: followingIds },
+        following: userId,
+      }).select("follower");
+      console.log("getConversations: mutualFollowers:", mutualFollowers);
+
+      const mutualFollowerIds = mutualFollowers.map((f) => f.follower);
+
       const messages = await Message.aggregate([
         {
           $match: {
             $or: [
-              { sender_id: mongoose.Types.ObjectId(userId) },
-              { receiver_id: mongoose.Types.ObjectId(userId) }
-            ]
-          }
+              { sender_id: new mongoose.Types.ObjectId(userId) },
+              { receiver_id: new mongoose.Types.ObjectId(userId) },
+            ],
+            $and: [
+              {
+                $or: [
+                  { sender_id: { $in: mutualFollowerIds } },
+                  { receiver_id: { $in: mutualFollowerIds } },
+                ],
+              },
+            ],
+          },
         },
-        // Nhóm theo conversation_id và lấy tin nhắn mới nhất
-        {
-          $sort: { createdAt: -1 }
-        },
+        { $sort: { createdAt: -1 } },
         {
           $group: {
             _id: "$conversation_id",
             last_message: { $first: "$$ROOT" },
-            messages: { $push: "$$ROOT" }
-          }
+            messages: { $push: "$$ROOT" },
+          },
         },
-        // Lấy thông tin cuộc trò chuyện
         {
           $project: {
             _id: 1,
@@ -41,248 +67,289 @@ class MessageController {
                   as: "message",
                   cond: {
                     $and: [
-                      { $eq: ["$$message.receiver_id", mongoose.Types.ObjectId(userId)] },
-                      { $eq: ["$$message.is_read", false] }
-                    ]
-                  }
-                }
-              }
-            }
-          }
+                      { $eq: ["$$message.receiver_id", new mongoose.Types.ObjectId(userId)] },
+                      { $eq: ["$$message.is_read", false] },
+                    ],
+                  },
+                },
+              },
+            },
+          },
         },
-        { $sort: { "last_message.createdAt": -1 } }
+        { $sort: { "last_message.createdAt": -1 } },
       ]);
-      
-      // Lấy danh sách ID người dùng từ các cuộc trò chuyện
+
+      console.log("getConversations: Raw messages:", messages);
+
       const userIds = new Set();
-      messages.forEach(conv => {
-        const participants = conv.conversation_id.split('_');
-        participants.forEach(id => userIds.add(id));
+      messages.forEach((conv) => {
+        if (!conv.conversation_id || typeof conv.conversation_id !== "string") {
+          console.error("Invalid conversation_id:", conv);
+          return;
+        }
+        const participants = conv.conversation_id.split("_");
+        if (participants.length !== 2 || !participants.every(id => mongoose.Types.ObjectId.isValid(id))) {
+          console.error("Invalid participants in conversation_id:", conv.conversation_id);
+          return;
+        }
+        participants.forEach((id) => userIds.add(id));
       });
-      
-      // Lấy thông tin người dùng
-      const users = await User.find({ _id: { $in: Array.from(userIds) } })
-        .select('_id full_name profile_picture');
-      
-      // Chuyển đổi mảng users thành object để dễ truy cập
+
+      const users = await User.find({ _id: { $in: Array.from(userIds) } }).select("_id full_name profile_picture");
+      console.log("getConversations: users:", users);
+
       const usersMap = {};
-      users.forEach(user => {
+      users.forEach((user) => {
         usersMap[user._id] = user;
       });
-      
-      // Định dạng lại kết quả
-      const conversations = messages.map(conv => {
-        const participants = conv.conversation_id.split('_');
-        
-        return {
-          _id: conv._id,
-          conversation_id: conv.conversation_id,
-          participants,
-          last_message: {
-            content: conv.last_message.content,
-            sender_id: conv.last_message.sender_id,
-            createdAt: conv.last_message.createdAt,
-            is_read: conv.last_message.is_read
-          },
-          unread_count: conv.unread_count
-        };
-      });
-      
+
+      const conversations = messages
+        .filter(conv => conv.conversation_id && typeof conv.conversation_id === "string")
+        .map((conv) => {
+          const participants = conv.conversation_id.split("_");
+          return {
+            _id: conv._id,
+            conversation_id: conv.conversation_id,
+            participants,
+            last_message: {
+              content: conv.last_message?.content || "Đã gửi một media",
+              sender_id: conv.last_message?.sender_id,
+              createdAt: conv.last_message?.createdAt,
+              is_read: conv.last_message?.is_read,
+            },
+            unread_count: conv.unread_count,
+          };
+        });
+
       res.json({
         success: true,
         conversations,
-        users: usersMap
+        users: usersMap,
       });
     } catch (error) {
-      console.error('Lỗi lấy danh sách cuộc trò chuyện:', error);
+      console.error("Lỗi lấy danh sách cuộc trò chuyện:", error);
       res.status(500).json({
         success: false,
-        message: 'Không thể lấy danh sách cuộc trò chuyện',
-        error: error.message
+        message: "Không thể lấy danh sách cuộc trò chuyện",
+        error: error.message,
       });
     }
   }
-  
-  // Lấy tin nhắn của một cuộc trò chuyện
+
   async getMessages(req, res) {
     try {
       const { conversationId } = req.params;
       const userId = req.user.id;
-      
-      // Kiểm tra xem người dùng có phải là thành viên của cuộc trò chuyện không
-      const participants = conversationId.split('_');
+
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ success: false, message: "Invalid user ID" });
+      }
+
+      const participants = conversationId.split("_");
       if (!participants.includes(userId)) {
         return res.status(403).json({
           success: false,
-          message: 'Không có quyền truy cập cuộc trò chuyện này'
+          message: "Không có quyền truy cập cuộc trò chuyện này",
         });
       }
-      
-      // Lấy tin nhắn của cuộc trò chuyện
+
+      const otherUserId = participants.find((id) => id !== userId);
+      const followRecord1 = await Follow.findOne({ follower: userId, following: otherUserId });
+      const followRecord2 = await Follow.findOne({ follower: otherUserId, following: userId });
+      const isMutualFollow = followRecord1 && followRecord2;
+
       const messages = await Message.find({ conversation_id: conversationId })
         .sort({ createdAt: 1 })
-        .populate('sender_id', 'full_name profile_picture');
-      
-      // Đánh dấu tất cả tin nhắn chưa đọc là đã đọc (nếu người dùng là người nhận)
+        .populate("sender_id", "full_name profile_picture");
+
       await Message.updateMany(
-        { 
+        {
           conversation_id: conversationId,
           receiver_id: userId,
-          is_read: false
+          is_read: false,
         },
-        { 
+        {
           is_read: true,
-          read_at: new Date()
+          read_at: new Date(),
         }
       );
-      
+
       res.json({
         success: true,
-        messages
+        messages,
+        isMutualFollow,
       });
     } catch (error) {
-      console.error('Lỗi lấy tin nhắn:', error);
+      console.error("Lỗi lấy tin nhắn:", error);
       res.status(500).json({
         success: false,
-        message: 'Không thể lấy tin nhắn',
-        error: error.message
+        message: "Không thể lấy tin nhắn",
+        error: error.message,
       });
     }
   }
-  
-  // Gửi tin nhắn mới (API dự phòng nếu không dùng Socket.IO)
+
   async sendMessage(req, res) {
     try {
       const { receiverId, content, media } = req.body;
       const senderId = req.user.id;
-      
+
       if (!receiverId) {
         return res.status(400).json({
           success: false,
-          message: 'Thiếu thông tin người nhận'
+          message: "Thiếu thông tin người nhận",
         });
       }
-      
+
+      if (!mongoose.Types.ObjectId.isValid(receiverId)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID người nhận không hợp lệ",
+        });
+      }
+
       if (!content && (!media || media.length === 0)) {
         return res.status(400).json({
           success: false,
-          message: 'Tin nhắn không được để trống'
+          message: "Tin nhắn không được để trống",
         });
       }
-      
-      // Tạo conversation_id từ ID của 2 người dùng (sắp xếp để đảm bảo tính nhất quán)
+
+      const followRecord1 = await Follow.findOne({ follower: senderId, following: receiverId });
+      const followRecord2 = await Follow.findOne({ follower: receiverId, following: senderId });
+      const isMutualFollow = followRecord1 && followRecord2;
+
+      if (!isMutualFollow) {
+        return res.status(403).json({
+          success: false,
+          message: "Bạn phải follow lẫn nhau để nhắn tin",
+        });
+      }
+
       const participants = [senderId, receiverId].sort();
-      const conversationId = participants.join('_');
-      
-      // Lưu tin nhắn vào database
+      const conversationId = participants.join("_");
+
       const newMessage = new Message({
         sender_id: senderId,
         receiver_id: receiverId,
         content,
         media: media || [],
         conversation_id: conversationId,
-        is_read: false
+        is_read: false,
       });
-      
+
       await newMessage.save();
-      
-      // Populate thông tin người gửi
-      await newMessage.populate('sender_id', 'full_name profile_picture');
-      
+      await newMessage.populate("sender_id", "full_name profile_picture");
+
       res.status(201).json({
         success: true,
-        message: newMessage
+        message: newMessage,
       });
     } catch (error) {
-      console.error('Lỗi gửi tin nhắn:', error);
+      console.error("Lỗi gửi tin nhắn:", error);
       res.status(500).json({
         success: false,
-        message: 'Không thể gửi tin nhắn',
-        error: error.message
+        message: "Không thể gửi tin nhắn",
+        error: error.message,
       });
     }
   }
-  
-  // Đánh dấu tin nhắn đã đọc (API dự phòng nếu không dùng Socket.IO)
+
   async markAsRead(req, res) {
     try {
       const { messageId } = req.params;
       const userId = req.user.id;
-      
+
       const message = await Message.findById(messageId);
-      
+
       if (!message) {
         return res.status(404).json({
           success: false,
-          message: 'Không tìm thấy tin nhắn'
+          message: "Không tìm thấy tin nhắn",
         });
       }
-      
-      // Chỉ người nhận mới có thể đánh dấu tin nhắn đã đọc
+
       if (message.receiver_id.toString() !== userId) {
         return res.status(403).json({
           success: false,
-          message: 'Không có quyền đánh dấu tin nhắn này'
+          message: "Không có quyền đánh dấu tin nhắn này",
         });
       }
-      
+
       message.is_read = true;
       message.read_at = new Date();
       await message.save();
-      
+
       res.json({
         success: true,
-        message: 'Đã đánh dấu tin nhắn là đã đọc'
+        message: "Đã đánh dấu tin nhắn là đã đọc",
       });
     } catch (error) {
-      console.error('Lỗi đánh dấu tin nhắn đã đọc:', error);
+      console.error("Lỗi đánh dấu tin nhắn đã đọc:", error);
       res.status(500).json({
         success: false,
-        message: 'Không thể đánh dấu tin nhắn đã đọc',
-        error: error.message
+        message: "Không thể đánh dấu tin nhắn đã đọc",
+        error: error.message,
       });
     }
   }
-  
-  // Đánh dấu tất cả tin nhắn trong cuộc trò chuyện là đã đọc
+
   async markAllAsRead(req, res) {
     try {
       const { conversationId } = req.params;
       const userId = req.user.id;
-      
-      // Kiểm tra xem người dùng có phải là thành viên của cuộc trò chuyện không
-      const participants = conversationId.split('_');
+
+      const participants = conversationId.split("_");
       if (!participants.includes(userId)) {
         return res.status(403).json({
           success: false,
-          message: 'Không có quyền truy cập cuộc trò chuyện này'
+          message: "Không có quyền truy cập cuộc trò chuyện này",
         });
       }
-      
-      // Đánh dấu tất cả tin nhắn chưa đọc là đã đọc (nếu người dùng là người nhận)
+
       const result = await Message.updateMany(
-        { 
+        {
           conversation_id: conversationId,
           receiver_id: userId,
-          is_read: false
+          is_read: false,
         },
-        { 
+        {
           is_read: true,
-          read_at: new Date()
+          read_at: new Date(),
         }
       );
-      
+
       res.json({
         success: true,
-        message: `Đã đánh dấu ${result.nModified} tin nhắn là đã đọc`
+        message: `Đã đánh dấu ${result.modifiedCount} tin nhắn là đã đọc`,
       });
     } catch (error) {
-      console.error('Lỗi đánh dấu tất cả tin nhắn đã đọc:', error);
+      console.error("Lỗi đánh dấu tất cả tin nhắn đã đọc:", error);
       res.status(500).json({
         success: false,
-        message: 'Không thể đánh dấu tất cả tin nhắn đã đọc',
-        error: error.message
+        message: "Không thể đánh dấu tất cả tin nhắn đã đọc",
+        error: error.message,
       });
+    }
+  }
+
+  async uploadMedia(req, res) {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ success: false, message: "No files uploaded" });
+      }
+
+      const media = req.files.map((file) => ({
+        type: file.mimetype.startsWith("image/") ? "image" : file.mimetype.startsWith("video/") ? "video" : "file",
+        url: `/uploads/${file.filename}`,
+        filename: file.originalname,
+        size: file.size,
+      }));
+
+      res.status(201).json({ success: true, media });
+    } catch (error) {
+      console.error("Error uploading media:", error);
+      res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
   }
 }

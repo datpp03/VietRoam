@@ -72,10 +72,10 @@
   display: flex;
   align-items: center;
   
-  &:before {
-    content: "⚠️";
-    margin-right: 5px;
-  }
+  // &:before {
+  //   content: "!";
+  //   margin-right: 2px;
+  // }
 }
 
 .content-length {

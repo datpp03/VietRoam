@@ -1,25 +1,28 @@
-import express from 'express';
-import messageController from '../app/controllers/messageController';
-import authMiddleware from '../app/middlewares/authMiddleware';
+import express from "express";
+import messageController from "../app/controllers/messageController";
+import authMiddleware from "../app/middlewares/authMiddleware";
+import multer from "multer";
+import path from "path";
 
 const router = express.Router();
 
-// Áp dụng middleware xác thực cho tất cả các route
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../../uploads"));
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
 router.use(authMiddleware);
-
-// Lấy danh sách cuộc trò chuyện của người dùng
-router.get('/conversations', messageController.getConversations);
-
-// Lấy tin nhắn của một cuộc trò chuyện
-router.get('/conversations/:conversationId', messageController.getMessages);
-
-// Gửi tin nhắn mới
-router.post('/send', messageController.sendMessage);
-
-// Đánh dấu tin nhắn đã đọc
-router.put('/mark-read/:messageId', messageController.markAsRead);
-
-// Đánh dấu tất cả tin nhắn trong cuộc trò chuyện là đã đọc
-router.put('/mark-all-read/:conversationId', messageController.markAllAsRead);
+router.get("/conversations", messageController.getConversations);
+router.get("/conversations/:conversationId", messageController.getMessages);
+router.post("/send", messageController.sendMessage);
+router.put("/mark-read/:messageId", messageController.markAsRead);
+router.put("/mark-all-read/:conversationId", messageController.markAllAsRead);
+router.post("/upload", upload.array("files", 10), messageController.uploadMedia);
 
 export default router;

@@ -1,10 +1,9 @@
-import authRoutes from './authRoutes.js';
-import messageRoutes from './messageRoutes';
+import authRoutes from "./authRoutes";
+import messageRoutes from "./messageRoutes";
+import userRoutes from "./userRoutes";
 
-
-function routes(app) {
-    app.use("/api", authRoutes);
-    app.use('/api/messages', messageRoutes);
-}
-
-export default routes;
+export default (app) => {
+  app.use("/api/auth", authRoutes);
+  app.use("/api/messages", messageRoutes);
+  app.use("/api/users", userRoutes);
+};

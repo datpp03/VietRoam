@@ -13,7 +13,7 @@ class SocketService {
       onUserStatus: () => {},
       onOnlineUsers: () => {},
       onError: () => {},
-      onConversationUpdate: () => {}
+      onConversationUpdate: () => {},
     };
   }
 
@@ -25,10 +25,9 @@ class SocketService {
     this.socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
       auth: { token },
       withCredentials: true,
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
     });
 
-    // Xử lý các sự kiện
     this.socket.on('connect', () => {
       console.log('Socket connected:', this.socket.id);
       this.callbacks.onConnect();
@@ -100,7 +99,7 @@ class SocketService {
     this.socket.emit('private_message', {
       receiverId,
       content,
-      media
+      media,
     });
   }
 
@@ -129,7 +128,6 @@ class SocketService {
     }
   }
 
-  // Đăng ký callback
   onConnect(callback) {
     this.callbacks.onConnect = callback;
     return this;
@@ -181,6 +179,5 @@ class SocketService {
   }
 }
 
-// Tạo instance duy nhất
 const socketService = new SocketService();
 export default socketService;

@@ -1,59 +1,55 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import styles from "./ChatArea.module.scss"
-import classNames from "classnames/bind"
-import { Send, Paperclip, Smile, Check, CheckCheck, ImageIcon, Phone, Video, X, Info } from "lucide-react"
-import data from "@emoji-mart/data"
-import Picker from "@emoji-mart/react"
+import { useState, useRef, useEffect } from "react";
+import styles from "./ChatArea.module.scss";
+import classNames from "classnames/bind";
+import { Send, Paperclip, Smile, Check, CheckCheck, ImageIcon, Phone, Video, X, Info } from "lucide-react";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
+import axios from "axios";
 
-const cx = classNames.bind(styles)
+const cx = classNames.bind(styles);
 
-// Helper function to format dates
 const formatTime = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-}
+  const date = new Date(dateString);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
 
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const today = new Date()
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
 
   if (date.toDateString() === today.toDateString()) {
-    return "Today"
+    return "Today";
   } else if (date.toDateString() === yesterday.toDateString()) {
-    return "Yesterday"
+    return "Yesterday";
   } else {
-    return date.toLocaleDateString()
+    return date.toLocaleDateString();
   }
-}
+};
 
-// Group messages by date
 const groupMessagesByDate = (messages) => {
-  const groups = {}
-
+  const groups = {};
   messages.forEach((message) => {
-    const date = new Date(message.createdAt).toDateString()
+    const date = new Date(message.createdAt).toDateString();
     if (!groups[date]) {
-      groups[date] = []
+      groups[date] = [];
     }
-    groups[date].push(message)
-  })
-
+    groups[date].push(message);
+  });
   return Object.entries(groups).map(([date, messages]) => ({
     date,
     messages,
-  }))
-}
+  }));
+};
 
 const MessageBubble = ({ message, isCurrentUser, onImageClick }) => {
   return (
     <div className={cx("message-container", { "current-user": isCurrentUser })}>
       <div className={cx("message-bubble")}>
         {message.content && <p className={cx("message-text")}>{message.content}</p>}
-
         {message.media && message.media.length > 0 && (
           <div className={cx("message-media")}>
             {message.media.map((media, index) => (
@@ -79,7 +75,6 @@ const MessageBubble = ({ message, isCurrentUser, onImageClick }) => {
             ))}
           </div>
         )}
-
         <div className={cx("message-info")}>
           <span className={cx("message-time")}>{formatTime(message.createdAt)}</span>
           {isCurrentUser && (
@@ -90,131 +85,129 @@ const MessageBubble = ({ message, isCurrentUser, onImageClick }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMessage, onTyping }) => {
-  const [newMessage, setNewMessage] = useState("")
-  const [mediaAttachments, setMediaAttachments] = useState([])
-  const [isTyping, setIsTyping] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [previewImage, setPreviewImage] = useState(null)
-  const messagesEndRef = useRef(null)
-  const fileInputRef = useRef(null)
-  const typingTimeoutRef = useRef(null)
-  const messageInputRef = useRef(null)
+const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMessage, onTyping, isMutualFollow }) => {
+  const [newMessage, setNewMessage] = useState("");
+  const [mediaAttachments, setMediaAttachments] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const messageInputRef = useRef(null);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    scrollToBottom();
+  }, [messages]);
 
-  // Handle typing indicator
   useEffect(() => {
-    if (newMessage && !isTyping) {
-      setIsTyping(true)
-      onTyping(true)
+    if (newMessage && !isTyping && isMutualFollow) {
+      setIsTyping(true);
+      onTyping(true);
     }
 
-    // Clear previous timeout
     if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current)
+      clearTimeout(typingTimeoutRef.current);
     }
 
-    // Set timeout to stop typing indicator
     typingTimeoutRef.current = setTimeout(() => {
       if (isTyping) {
-        setIsTyping(false)
-        onTyping(false)
+        setIsTyping(false);
+        onTyping(false);
       }
-    }, 2000)
+    }, 2000);
 
     return () => {
       if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
+        clearTimeout(typingTimeoutRef.current);
       }
-    }
-  }, [newMessage, isTyping, onTyping])
+    };
+  }, [newMessage, isTyping, onTyping, isMutualFollow]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (messageInputRef.current) {
-      messageInputRef.current.style.height = "auto"
-      messageInputRef.current.style.height = `${Math.min(messageInputRef.current.scrollHeight, 120)}px`
+      messageInputRef.current.style.height = "auto";
+      messageInputRef.current.style.height = `${Math.min(messageInputRef.current.scrollHeight, 120)}px`;
     }
-  }, [newMessage])
+  }, [newMessage]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSendMessage = (e) => {
-    e.preventDefault()
-
-    if (newMessage.trim() || mediaAttachments.length > 0) {
-      onSendMessage(newMessage.trim(), mediaAttachments)
-      setNewMessage("")
-      setMediaAttachments([])
-      setIsTyping(false)
-      onTyping(false)
-
-      // Reset textarea height
-      if (messageInputRef.current) {
-        messageInputRef.current.style.height = "auto"
-      }
+    e.preventDefault();
+    if (!isMutualFollow || (!newMessage.trim() && mediaAttachments.length === 0)) {
+      return;
     }
-  }
+
+    onSendMessage(newMessage.trim(), mediaAttachments);
+    setNewMessage("");
+    setMediaAttachments([]);
+    setIsTyping(false);
+    onTyping(false);
+    if (messageInputRef.current) {
+      messageInputRef.current.style.height = "auto";
+    }
+  };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage(e)
+    if (e.key === "Enter" && !e.shiftKey && isMutualFollow) {
+      e.preventDefault();
+      handleSendMessage(e);
     }
-  }
+  };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files)
+  const handleFileSelect = async (e) => {
+    if (!isMutualFollow) return;
 
-    // In a real app, you would upload these files to a server
-    // For now, we'll create local URLs
-    const newAttachments = files.map((file) => {
-      const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "file"
+    const files = Array.from(e.target.files);
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
 
-      return {
-        type,
-        url: URL.createObjectURL(file),
-        filename: file.name,
-        size: file.size,
-      }
-    })
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/messages/upload`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
 
-    setMediaAttachments([...mediaAttachments, ...newAttachments])
+      const newAttachments = response.data.media;
+      setMediaAttachments([...mediaAttachments, ...newAttachments]);
+    } catch (error) {
+      console.error("Error uploading media:", error);
+    }
 
-    // Reset the file input
-    e.target.value = null
-  }
+    e.target.value = null;
+  };
 
   const removeAttachment = (index) => {
-    const newAttachments = [...mediaAttachments]
-    newAttachments.splice(index, 1)
-    setMediaAttachments(newAttachments)
-  }
+    const newAttachments = [...mediaAttachments];
+    newAttachments.splice(index, 1);
+    setMediaAttachments(newAttachments);
+  };
 
   const handleEmojiSelect = (emoji) => {
-    setNewMessage((prev) => prev + emoji.native)
-    setShowEmojiPicker(false)
-    messageInputRef.current?.focus()
-  }
+    if (!isMutualFollow) return;
+    setNewMessage((prev) => prev + emoji.native);
+    setShowEmojiPicker(false);
+    messageInputRef.current?.focus();
+  };
 
   const handleImageClick = (url) => {
-    setPreviewImage(url)
-  }
+    setPreviewImage(url);
+  };
 
   const closeImagePreview = () => {
-    setPreviewImage(null)
-  }
+    setPreviewImage(null);
+  };
 
-  const groupedMessages = groupMessagesByDate(messages)
+  const groupedMessages = groupMessagesByDate(messages);
 
   return (
     <div className={cx("chat-area")}>
@@ -222,14 +215,14 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
         <div className={cx("chat-partner-info")}>
           <div className={cx("avatar-container")}>
             <img
-              src={chatPartner.avatar || "/placeholder.svg?height=100&width=100"}
-              alt={chatPartner.username}
+              src={chatPartner.profile_picture || "/placeholder.svg?height=100&width=100"}
+              alt={chatPartner.full_name}
               className={cx("avatar")}
             />
             {chatPartner.isOnline && <span className={cx("online-indicator")}></span>}
           </div>
           <div className={cx("partner-details")}>
-            <h3 className={cx("partner-name")}>{chatPartner.username}</h3>
+            <h3 className={cx("partner-name")}>{chatPartner.full_name}</h3>
             <p className={cx("partner-status", { typing: chatPartner.isTyping })}>
               {chatPartner.isTyping ? (
                 <>
@@ -248,7 +241,6 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
             </p>
           </div>
         </div>
-
         <div className={cx("chat-actions")}>
           <button className={cx("action-button")} aria-label="Voice call">
             <Phone size={18} />
@@ -261,29 +253,30 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
           </button>
         </div>
       </div>
-
       <div className={cx("messages-container")}>
+        {!isMutualFollow && (
+          <div className={cx("mutual-follow-notice")}>
+            <p>You must both follow each other to send new messages.</p>
+          </div>
+        )}
         {groupedMessages.map((group, groupIndex) => (
           <div key={groupIndex} className={cx("message-group")}>
             <div className={cx("date-separator")}>
               <span>{formatDate(group.date)}</span>
             </div>
-
             {group.messages.map((message) => (
               <MessageBubble
                 key={message._id}
                 message={message}
-                isCurrentUser={message.sender_id === currentUser._id}
+                isCurrentUser={message.sender_id._id === currentUser.id}
                 onImageClick={handleImageClick}
               />
             ))}
           </div>
         ))}
-
         <div ref={messagesEndRef} />
       </div>
-
-      {mediaAttachments.length > 0 && (
+      {mediaAttachments.length > 0 && isMutualFollow && (
         <div className={cx("attachments-preview")}>
           {mediaAttachments.map((media, index) => (
             <div key={index} className={cx("attachment-item")}>
@@ -309,17 +302,16 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
           ))}
         </div>
       )}
-
       <form className={cx("message-input-container")} onSubmit={handleSendMessage}>
         <button
           type="button"
-          className={cx("attachment-button")}
-          onClick={() => fileInputRef.current.click()}
+          className={cx("attachment-button", { disabled: !isMutualFollow })}
+          onClick={() => isMutualFollow && fileInputRef.current.click()}
           aria-label="Attach file"
+          disabled={!isMutualFollow}
         >
           <Paperclip size={20} />
         </button>
-
         <input
           type="file"
           ref={fileInputRef}
@@ -328,42 +320,46 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
           multiple
           accept="image/*,video/*,application/*"
         />
-
-        <button type="button" className={cx("attachment-button")} aria-label="Attach image">
+        <button
+          type="button"
+          className={cx("attachment-button", { disabled: !isMutualFollow })}
+          aria-label="Attach image"
+          disabled={!isMutualFollow}
+        >
           <ImageIcon size={20} />
         </button>
-
         <div className={cx("message-input-wrapper")}>
           <textarea
             ref={messageInputRef}
-            placeholder="Type a message..."
+            placeholder={isMutualFollow ? "Type a message..." : "Messaging disabled"}
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={(e) => isMutualFollow && setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={cx("message-input")}
+            className={cx("message-input", { disabled: !isMutualFollow })}
             rows={1}
+            disabled={!isMutualFollow}
           />
         </div>
-
         <button
           type="button"
-          className={cx("emoji-button")}
-          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className={cx("emoji-button", { disabled: !isMutualFollow })}
+          onClick={() => isMutualFollow && setShowEmojiPicker(!showEmojiPicker)}
           aria-label="Emoji"
+          disabled={!isMutualFollow}
         >
           <Smile size={20} />
         </button>
-
         <button
           type="submit"
-          className={cx("send-button", { active: newMessage.trim() || mediaAttachments.length > 0 })}
-          disabled={!newMessage.trim() && mediaAttachments.length === 0}
+          className={cx("send-button", {
+            active: isMutualFollow && (newMessage.trim() || mediaAttachments.length > 0),
+          })}
+          disabled={!isMutualFollow || (!newMessage.trim() && mediaAttachments.length === 0)}
           aria-label="Send message"
         >
           <Send size={20} />
         </button>
-
-        {showEmojiPicker && (
+        {showEmojiPicker && isMutualFollow && (
           <div className={cx("emoji-picker")}>
             <Picker
               data={data}
@@ -375,7 +371,6 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
           </div>
         )}
       </form>
-
       {previewImage && (
         <div className={cx("image-preview-modal")} onClick={closeImagePreview}>
           <img src={previewImage || "/placeholder.svg"} alt="Preview" className={cx("preview-image")} />
@@ -385,7 +380,7 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default ChatArea
+export default ChatArea;

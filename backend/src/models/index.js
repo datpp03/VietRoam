@@ -4,7 +4,7 @@ const Post = require("./Post");
 const Comment = require("./Comment");
 const Like = require("./Like");
 const Message = require("./Message");
-const Folllow = require("./follow");
+const Follow = require("./Follow");
 
 // Thêm các model khác nếu có
 
@@ -14,5 +14,5 @@ module.exports = {
   Comment,
   Like,
   Message,
-  Folllow,
+  Follow,
 };
