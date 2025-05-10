@@ -1,9 +1,7 @@
-"use client"
-
-import { useState } from "react"
-
-import classNames from "classnames/bind"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useEffect } from "react";
+import classNames from "classnames/bind";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleQuestion,
   faCoins,
@@ -13,24 +11,22 @@ import {
   faKeyboard,
   faSignOut,
   faUser,
-} from "@fortawesome/free-solid-svg-icons"
-import { Link } from "react-router-dom"
-import Tippy from "@tippyjs/react"
-import "tippy.js/dist/tippy.css"
-
-import config from "~/config"
-import Button from "~/components/Button"
-import styles from "./Header.module.scss"
-import images from "~/assets/images"
-import Menu from "~/components/Popper/Menu"
-import { InboxIcon, MessageIcon, UploadIcon } from "~/components/Icons"
-import Image from "~/components/Image"
-import Search from "../Search"
-import { useAuth } from "~/context/AuthContext"
-import NotificationDropdown from "~/components/Notifications/NotificationDropdown"
-import { sampleNotifications } from "~/components/Notifications/sampleNotifications"
-
-const cx = classNames.bind(styles)
+} from "@fortawesome/free-solid-svg-icons";
+import { Link, useNavigate } from "react-router-dom";
+import Tippy from "@tippyjs/react";
+import "tippy.js/dist/tippy.css";
+import config from "~/config";
+import Button from "~/components/Button";
+import styles from "./Header.module.scss";
+import images from "~/assets/images";
+import Menu from "~/components/Popper/Menu";
+import { InboxIcon, MessageIcon, UploadIcon } from "~/components/Icons";
+import Image from "~/components/Image";
+import Search from "../Search";
+import { useAuth } from "~/contexts/AuthContext";
+import NotificationDropdown from "~/components/Notifications/NotificationDropdown";
+import { useNotifications } from '~/contexts/NotificationContext';
+const cx = classNames.bind(styles);
 
 const MENU_ITEMS = [
   {
@@ -39,74 +35,72 @@ const MENU_ITEMS = [
     children: {
       title: "Language",
       data: [
-        { type: "language", code: "en", title: "English" },
         { type: "language", code: "vi", title: "Tiếng Việt" },
+        { type: "language", code: "en", title: "developing" },
       ],
     },
   },
   {
     icon: <FontAwesomeIcon icon={faCircleQuestion} />,
-    title: "Feedback and help",
-    to: "/feedback",
+    title: "developing",
+    // title: "Feedback and help",
+    // to: "/feedback",
   },
   {
     icon: <FontAwesomeIcon icon={faKeyboard} />,
-    title: "Keyboard shortcuts",
+    title: "developing",
+    // title: "Keyboard shortcuts",
   },
-]
+];
 
 function Header() {
-  const { user, logout, loading } = useAuth()
-  const [notifications, setNotifications] = useState(sampleNotifications)
+  const { user, logout, loading } = useAuth();
+  const { unreadCount, fetchNotifications } = useNotifications();
+  const myId = user?.id;
+  const navigate = useNavigate();
 
-  if (loading) return null
+  useEffect(() => {
+    if (myId) {
+      fetchNotifications(myId);
+    }
+  }, [myId]);
 
-  const currentUser = !!user
+  if (loading) return null;
 
-  const unreadCount = notifications.filter((notification) => !notification.is_read).length
+  const currentUser = !!user;
+  const username = user?.email.split('@')[0];
 
   const handleMenuChange = (menuItem) => {
     switch (menuItem.type) {
       case "language":
-        // Handle change language
-        break
-      case "logout":
-        logout()
-        break
+        console.log("đang phát triển");
+        break;
+      case "logout": 
+        logout();
+        navigate(config.routes.home);
+        break;
       default:
     }
-  }
-
-  const handleMarkAsRead = (notificationId) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) =>
-        notification._id === notificationId ? { ...notification, is_read: true } : notification,
-      ),
-    )
-  }
-
-  const handleMarkAllAsRead = () => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) => ({ ...notification, is_read: true })),
-    )
-  }
+  };
 
   const menuItems = currentUser
     ? [
         {
           icon: <FontAwesomeIcon icon={faUser} />,
           title: "View profile",
-          to: `/@${user?.username || "me"}`,
+          to: `/@${username}`,
         },
         {
           icon: <FontAwesomeIcon icon={faCoins} />,
-          title: "Get coins",
-          to: "/coin",
+          title: "developing",
+          // title: "Get coins",
+          // to: "/coin",
         },
         {
           icon: <FontAwesomeIcon icon={faGear} />,
-          title: "Settings",
-          to: "/settings",
+          title: "developing",
+          // title: "Settings",
+          // to: "/settings",
         },
         ...MENU_ITEMS,
         {
@@ -116,7 +110,7 @@ function Header() {
           separate: true,
         },
       ]
-    : MENU_ITEMS
+    : MENU_ITEMS;
 
   return (
     <header className={cx("wrapper")}>
@@ -125,8 +119,7 @@ function Header() {
           <img src={images.logo || "/placeholder.svg"} alt="travelblog" className={cx("logo")} />
         </Link>
 
-       
-        {currentUser && <Search />}
+        <Search />
         <div className={cx("actions")}>
           {currentUser ? (
             <>
@@ -148,7 +141,7 @@ function Header() {
                 <NotificationDropdown>
                   <button className={cx("action-btn")}>
                     <InboxIcon />
-                    <span className={cx("badge")}>{unreadCount}</span>
+                    {unreadCount > 0 && <span className={cx("badge")}>{unreadCount}</span>}
                   </button>
                 </NotificationDropdown>
               </Tippy>
@@ -178,7 +171,7 @@ function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
-export default Header
+export default Header;

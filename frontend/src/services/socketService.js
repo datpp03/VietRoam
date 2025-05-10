@@ -38,6 +38,11 @@ class SocketService {
       this.callbacks.onDisconnect(reason);
     });
 
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connect_error:', error);
+      this.callbacks.onError(error);
+    });
+
     this.socket.on('new_message', (message) => {
       console.log('New message received:', message);
       this.callbacks.onNewMessage(message);
@@ -87,19 +92,22 @@ class SocketService {
       return;
     }
 
+    console.log('Socket login:', userId);
     this.socket.emit('login', userId);
   }
 
-  sendMessage(receiverId, content, media = []) {
+  sendMessage(receiverId, content, media = [], tempId) {
     if (!this.socket || !this.socket.connected) {
       console.error('Socket not connected');
       return;
     }
 
+    console.log('Sending private_message:', { receiverId, content, media, tempId });
     this.socket.emit('private_message', {
       receiverId,
       content,
       media,
+      tempId,
     });
   }
 
@@ -109,6 +117,7 @@ class SocketService {
       return;
     }
 
+    console.log('Marking message as read:', messageId);
     this.socket.emit('mark_read', { messageId });
   }
 
@@ -118,11 +127,13 @@ class SocketService {
       return;
     }
 
+    console.log('Sending typing status:', { receiverId, isTyping });
     this.socket.emit('typing', { receiverId, isTyping });
   }
 
   disconnect() {
     if (this.socket) {
+      console.log('Disconnecting socket');
       this.socket.disconnect();
       this.socket = null;
     }
@@ -149,7 +160,7 @@ class SocketService {
   }
 
   onMessageRead(callback) {
-    this.callbacks.onMessageRead = callback;
+    this.callbacks.onMessageSent = callback;
     return this;
   }
 

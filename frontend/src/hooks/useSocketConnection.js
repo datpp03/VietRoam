@@ -1,98 +1,59 @@
-"use client";
-
-import { useEffect, useRef, useState, useCallback } from "react";
-import { io } from "socket.io-client";
-
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { useEffect, useState } from "react";
+import io from "socket.io-client";
 
 export const useSocketConnection = (userId, token) => {
+  const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const socketRef = useRef(null);
-  const reconnectTimerRef = useRef(null);
 
-  const connect = useCallback(() => {
+  useEffect(() => {
     if (!userId || !token) {
-      console.log("useSocketConnection: Missing userId or token");
+      console.error("useSocketConnection: Missing userId or token", { userId, token });
+      setError("Thiếu thông tin đăng nhập");
       return;
     }
 
-    console.log("useSocketConnection: Connecting to", SOCKET_SERVER_URL);
-    if (socketRef.current) {
-      console.log("useSocketConnection: Disconnecting existing socket");
-      socketRef.current.disconnect();
-    }
+    console.log("useSocketConnection: Initializing socket with userId:", userId);
 
-    const socket = io(SOCKET_SERVER_URL, {
+    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001", {
       auth: { token },
-      withCredentials: true,
+      reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      timeout: 10000,
     });
 
-    socket.on("connect", () => {
-      console.log("useSocketConnection: Socket connected");
+    newSocket.on("connect", () => {
+      console.log("useSocketConnection: Socket connected, socketId:", newSocket.id);
       setIsConnected(true);
       setError(null);
-      setReconnectAttempts(0);
-
-      if (reconnectTimerRef.current) {
-        console.log("useSocketConnection: Clearing reconnect timer");
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
+      newSocket.emit("login", userId);
+      console.log("useSocketConnection: Emitted login with userId:", userId);
     });
 
-    socket.on("connect_error", (err) => {
-      console.error("useSocketConnection: Socket connection error:", err.message);
+    newSocket.on("connect_error", (err) => {
+      console.error("useSocketConnection: Connection error:", err.message);
       setError(err.message);
       setIsConnected(false);
-      setReconnectAttempts((prev) => prev + 1);
     });
 
-    socket.on("disconnect", (reason) => {
+    newSocket.on("disconnect", (reason) => {
       console.log("useSocketConnection: Socket disconnected, reason:", reason);
       setIsConnected(false);
-
-      if (reason === "io server disconnect" || reason === "transport close") {
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
-        console.log(`useSocketConnection: Scheduling reconnect after ${delay}ms (attempt ${reconnectAttempts + 1})`);
-        reconnectTimerRef.current = setTimeout(() => {
-          console.log("useSocketConnection: Attempting to reconnect...");
-          connect();
-        }, delay);
-      }
+      setError("Mất kết nối máy chủ chat");
     });
 
-    socket.on("error", (err) => {
-      console.error("useSocketConnection: Socket error:", err);
-      setError(err.message || "Unknown socket error");
+    newSocket.on("error", (error) => {
+      console.error("useSocketConnection: Server error:", error);
+      setError(error.message || "Lỗi máy chủ chat");
     });
 
-    socketRef.current = socket;
-
-    return socket;
-  }, [userId, token, reconnectAttempts]);
-
-  useEffect(() => {
-    console.log("useSocketConnection: useEffect triggered, userId:", userId);
-    const socket = connect();
+    setSocket(newSocket);
 
     return () => {
-      console.log("useSocketConnection: Cleaning up");
-      if (reconnectTimerRef.current) {
-        console.log("useSocketConnection: Clearing reconnect timer");
-        clearTimeout(reconnectTimerRef.current);
-      }
-      if (socketRef.current) {
-        console.log("useSocketConnection: Disconnecting socket");
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
+      console.log("useSocketConnection: Cleaning up socket");
+      newSocket.close();
     };
-  }, [connect]);
+  }, [userId, token]);
 
-  return { socket: socketRef.current, isConnected, error };
+  return { socket, isConnected, error };
 };

@@ -1,92 +1,86 @@
-"use client"
+import { useState } from "react";
+import { Heart, MessageCircle, UserPlus, Reply, AtSign, Check } from "lucide-react";
+import styles from "./NotificationItem.module.scss";
+import classNames from "classnames/bind";
+import { formatTimeAgo } from "~/utils/dateUtils";
 
-import { useState } from "react"
-import { Heart, MessageCircle, UserPlus, Reply, AtSign, Check } from "lucide-react"
-import styles from "./NotificationItem.module.scss"
-import classNames from "classnames/bind"
-import { formatTimeAgo } from "~/utils/dateUtils"
-
-const cx = classNames.bind(styles)
+const cx = classNames.bind(styles);
 
 const NotificationItem = ({ notification, onMarkAsRead }) => {
-  const [isHovered, setIsHovered] = useState(false)
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleMarkAsRead = () => {
     if (!notification.is_read) {
-      onMarkAsRead(notification._id)
+      onMarkAsRead(notification._id);
     }
-  }
+  };
 
   const getNotificationIcon = () => {
     switch (notification.type) {
       case "like":
-        return <Heart className={cx("notification-icon", "like")} size={20} />
+        return <Heart className={cx("notification-icon", "like")} size={20} />;
       case "comment":
-        return <MessageCircle className={cx("notification-icon", "comment")} size={20} />
+        return <MessageCircle className={cx("notification-icon", "comment")} size={20} />;
       case "follow":
-        return <UserPlus className={cx("notification-icon", "follow")} size={20} />
+        return <UserPlus className={cx("notification-icon", "follow")} size={20} />;
       case "reply":
-        return <Reply className={cx("notification-icon", "reply")} size={20} />
-      case "mention":
-        return <AtSign className={cx("notification-icon", "mention")} size={20} />
+        return <Reply className={cx("notification-icon", "reply")} size={20} />;
       default:
-        return <Heart className={cx("notification-icon")} size={20} />
+        return <Heart className={cx("notification-icon")} size={20} />;
     }
-  }
+  };
 
   const getNotificationText = () => {
-    const username = notification.sender.username
+    const username = notification.sender_id.full_name || notification.sender_id.email.split('@')[0];
     switch (notification.type) {
       case "like":
         return (
           <>
             <span className={cx("username")}>{username}</span> đã thích bài viết của bạn
           </>
-        )
+        );
       case "comment":
         return (
           <>
             <span className={cx("username")}>{username}</span> đã bình luận về bài viết của bạn:{" "}
-            <span className={cx("content-preview")}>"{notification.comment.content.substring(0, 30)}..."</span>
+            <span className={cx("content-preview")}>
+              "{notification.comment_id?.content.substring(0, 30) || ""}..."
+            </span>
           </>
-        )
+        );
       case "follow":
         return (
           <>
             <span className={cx("username")}>{username}</span> đã bắt đầu theo dõi bạn
           </>
-        )
+        );
       case "reply":
         return (
           <>
             <span className={cx("username")}>{username}</span> đã trả lời bình luận của bạn:{" "}
-            <span className={cx("content-preview")}>"{notification.comment.content.substring(0, 30)}..."</span>
+            <span className={cx("content-preview")}>
+              "{notification.comment_id?.content.substring(0, 30) || ""}..."
+            </span>
           </>
-        )
-      case "mention":
-        return (
-          <>
-            <span className={cx("username")}>{username}</span> đã nhắc đến bạn trong một bài viết
-          </>
-        )
+        );
       default:
         return (
           <>
             <span className={cx("username")}>{username}</span> đã tương tác với bạn
           </>
-        )
+        );
     }
-  }
+  };
 
   const getNotificationMedia = () => {
-    if (notification.post && notification.post.media && notification.post.media.length > 0) {
-      const media = notification.post.media[0]
+    if (notification.post_id && notification.post_id.media && notification.post_id.media.length > 0) {
+      const media = notification.post_id.media[0];
       if (media.type === "image") {
         return (
           <div className={cx("media-preview")}>
             <img src={media.url || "/placeholder.svg"} alt="Post media" />
           </div>
-        )
+        );
       } else if (media.type === "video") {
         return (
           <div className={cx("media-preview", "video")}>
@@ -95,11 +89,11 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
               <span>Video</span>
             </div>
           </div>
-        )
+        );
       }
     }
-    return null
-  }
+    return null;
+  };
 
   return (
     <div
@@ -111,8 +105,8 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
       <div className={cx("notification-content")}>
         <div className={cx("avatar-container")}>
           <img
-            src={notification.sender.avatar || "/placeholder.svg?height=40&width=40"}
-            alt={notification.sender.username}
+            src={notification.sender_id.profile_picture || "/placeholder.svg?height=40&width=40"}
+            alt={notification.sender_id.full_name || notification.sender_id.email}
             className={cx("avatar")}
           />
           <div className={cx("icon-container")}>{getNotificationIcon()}</div>
@@ -129,8 +123,8 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
           <button
             className={cx("mark-read-button")}
             onClick={(e) => {
-              e.stopPropagation()
-              handleMarkAsRead()
+              e.stopPropagation();
+              handleMarkAsRead();
             }}
           >
             <Check size={16} />
@@ -138,7 +132,7 @@ const NotificationItem = ({ notification, onMarkAsRead }) => {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default NotificationItem
+export default NotificationItem;

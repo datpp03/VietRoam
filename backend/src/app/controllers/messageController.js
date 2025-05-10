@@ -1,12 +1,12 @@
 import { Message, User, Follow } from "../../models";
 import mongoose from "mongoose";
 
-console.log("Follow model:", Follow); // Debug Follow
+// console.log("Follow model:", Follow); // Debug Follow
 
 class MessageController {
   async getConversations(req, res) {
     try {
-      console.log("getConversations: req.user:", req.user);
+      // console.log("getConversations: req.user:", req.user);
       const userId = req.user.id;
 
       if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -19,14 +19,14 @@ class MessageController {
       }
 
       const following = await Follow.find({ follower: userId }).select("following");
-      console.log("getConversations: following:", following);
+      // console.log("getConversations: following:", following);
       const followingIds = following.map((f) => f.following);
 
       const mutualFollowers = await Follow.find({
         follower: { $in: followingIds },
         following: userId,
       }).select("follower");
-      console.log("getConversations: mutualFollowers:", mutualFollowers);
+      // console.log("getConversations: mutualFollowers:", mutualFollowers);
 
       const mutualFollowerIds = mutualFollowers.map((f) => f.follower);
 
@@ -79,7 +79,7 @@ class MessageController {
         { $sort: { "last_message.createdAt": -1 } },
       ]);
 
-      console.log("getConversations: Raw messages:", messages);
+      // console.log("getConversations: Raw messages:", messages);
 
       const userIds = new Set();
       messages.forEach((conv) => {
@@ -96,7 +96,7 @@ class MessageController {
       });
 
       const users = await User.find({ _id: { $in: Array.from(userIds) } }).select("_id full_name profile_picture");
-      console.log("getConversations: users:", users);
+      // console.log("getConversations: users:", users);
 
       const usersMap = {};
       users.forEach((user) => {
@@ -338,14 +338,15 @@ class MessageController {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, message: "No files uploaded" });
       }
-
+  
+      const baseUrl = process.env.APP_URL || "http://localhost:3001"; // Thêm biến môi trường hoặc URL mặc định
       const media = req.files.map((file) => ({
         type: file.mimetype.startsWith("image/") ? "image" : file.mimetype.startsWith("video/") ? "video" : "file",
-        url: `/uploads/${file.filename}`,
+        url: `${baseUrl}/Uploads/${file.filename}`, // Trả về URL đầy đủ
         filename: file.originalname,
         size: file.size,
       }));
-
+  
       res.status(201).json({ success: true, media });
     } catch (error) {
       console.error("Error uploading media:", error);

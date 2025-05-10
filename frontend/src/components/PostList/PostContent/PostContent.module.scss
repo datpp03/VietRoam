@@ -1,0 +1,229 @@
+.post-content {
+    padding: 18px;
+  }
+  
+  .content-text {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    white-space: pre-line;
+    color: #262626;
+  }
+  
+  .tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  
+  .tag {
+    font-size: 14px;
+    color: #1976d2;
+    margin-right: 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  
+    &:hover {
+      color: #0d47a1;
+      transform: scale(1.05);
+    }
+  }
+  
+  .media-container {
+    margin: 0 -18px 16px;
+    position: relative;
+    background-color: #000;
+    touch-action: pan-y;
+    height: auto;
+    width: calc(100% + 36px);
+  }
+  
+  .media-swiper {
+    display: flex;
+    width: 100%;
+    cursor: grab;
+  
+    &.is-dragging {
+      cursor: grabbing;
+    }
+  }
+  
+  .media-item {
+    flex: 0 0 100%;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .media-image-container,
+  .media-video-container {
+    width: 100%;
+    height: 0;
+    padding-bottom: 75%;
+    position: relative;
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  
+    @media (min-width: 768px) {
+      padding-bottom: 65%;
+    }
+  }
+  
+  .media-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  
+  .media-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-color: #000;
+  }
+  
+  .media-indicators {
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    z-index: 2;
+  }
+  
+  .media-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  
+    &.active {
+      background-color: #fff;
+      width: 10px;
+      height: 10px;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+    }
+  
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+  }
+  
+  .post-heart-animation {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+  
+    .heart-icon {
+      color: #fe2c55;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+      animation: popHeart 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+  }
+  
+  @keyframes popHeart {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+    }
+    15% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+    30% {
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+    45% {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+    80% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.5);
+    }
+  }
+  
+  .location-container {
+    margin-top: 16px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 10px;
+  }
+  
+  .location-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.03);
+  
+      .location-name {
+        color: #e53935;
+      }
+    }
+  }
+  
+  .location-icon {
+    form: #e53935;
+    margin-right: 8px;
+  }
+  
+  .location-name {
+    font-size: 14px;
+    color: #424242;
+    font-weight: 500;
+    transition: color 0.2s ease;
+  }
+  
+  .map-container {
+    margin-top: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #eeeeee;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    height: 250px;
+  }
+  
+  @media (max-width: 768px) {
+    .media-container {
+      margin-left: -18px;
+      margin-right: -18px;
+      width: calc(100% + 36px);
+    }
+  
+    .media-image-container,
+    .media-video-container {
+      padding-bottom: 100%;
+    }
+  
+    .map-container {
+      height: 200px;
+    }
+  }

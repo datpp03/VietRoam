@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '~/context/AuthContext';
+import { useAuth } from '~/contexts/AuthContext';
 import { auth, googleProvider } from '~/firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { FcGoogle } from 'react-icons/fc';
@@ -31,7 +31,7 @@ function Login() {
       const data = await loginWithGoogle(idToken);
       console.log('Đăng nhập thành công:', data);
       
-      login(data.user, data.token);
+      login(data.user, data.token, data.following);
       navigate('/');
     } catch (err) {
       console.error('Lỗi đăng nhập:', err);

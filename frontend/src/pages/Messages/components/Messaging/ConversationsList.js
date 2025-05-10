@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import styles from "./ConversationsList.module.scss";
 import classNames from "classnames/bind";
 import { Search, Plus, MessageSquare, X } from "lucide-react";
@@ -100,26 +100,19 @@ const UserSearchItem = ({ user, onSelect }) => {
   );
 };
 
-const ConversationsList = ({ conversations, users, currentUser, activeConversation, onSelectConversation, token }) => {
+const ConversationsList = ({ conversations, setConversations, users, currentUser, activeConversation, onSelectConversation, token }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredConversations, setFilteredConversations] = useState([]);
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [searchUsers, setSearchUsers] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  useEffect(() => {
-    if (!searchQuery || showNewMessage) {
-      setFilteredConversations(conversations);
-      return;
-    }
-
-    const filtered = conversations.filter((conversation) => {
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery || showNewMessage) return conversations;
+    return conversations.filter((conversation) => {
       const partnerId = conversation.participants.find((id) => id !== currentUser.id);
       const partner = users[partnerId];
       return partner?.full_name.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
-    setFilteredConversations(filtered);
   }, [searchQuery, conversations, users, currentUser, showNewMessage]);
 
   useEffect(() => {
@@ -132,7 +125,7 @@ const ConversationsList = ({ conversations, users, currentUser, activeConversati
       try {
         setSearchLoading(true);
         messageService.setAuthToken(token);
-        const { success, users } = await messageService.searchUsers(searchQuery);
+        const { success, users } = await messageService.searchFollowUsers(searchQuery);
         if (success) {
           setSearchUsers(users);
         }
@@ -153,12 +146,14 @@ const ConversationsList = ({ conversations, users, currentUser, activeConversati
   };
 
   const handleSelectUser = (selectedUser) => {
+    console.log("handleSelectUser: selectedUser:", selectedUser);
     const conversationId = [currentUser.id, selectedUser._id].sort().join("_");
-    const existingConversation = conversations.find((conv) => conv.conversation_id === conversationId);
+    console.log("handleSelectUser: conversationId:", conversationId);
 
-    if (existingConversation) {
-      onSelectConversation(existingConversation);
-    } else {
+    let existingConversation = conversations.find((conv) => conv.conversation_id === conversationId);
+    console.log("handleSelectUser: existingConversation:", existingConversation);
+
+    if (!existingConversation) {
       const newConversation = {
         _id: conversationId,
         conversation_id: conversationId,
@@ -166,9 +161,12 @@ const ConversationsList = ({ conversations, users, currentUser, activeConversati
         last_message: null,
         unread_count: 0,
       };
-      onSelectConversation(newConversation);
+      console.log("handleSelectUser: Creating new conversation:", newConversation);
+      setConversations((prev) => [newConversation, ...prev]);
+      existingConversation = newConversation;
     }
 
+    onSelectConversation(existingConversation);
     setShowNewMessage(false);
     setSearchQuery("");
     setSearchUsers([]);

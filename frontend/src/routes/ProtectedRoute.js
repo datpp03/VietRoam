@@ -2,7 +2,7 @@ import config from '~/config';
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '~/context/AuthContext'; // Đảm bảo đường dẫn đúng với AuthContext.js
+import { useAuth } from '~/contexts/AuthContext'; // Đảm bảo đường dẫn đúng với AuthContext.js
 
 const ProtectedRoute = ({ children, authRequired }) => {
   const { user } = useAuth();

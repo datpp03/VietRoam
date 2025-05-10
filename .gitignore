@@ -4,3 +4,4 @@ node_modules/
 dist/
 build/
 backend/src/configs/travelblog-e4f43-firebase-adminsdk-fbsvc-e63eb0f485.json
+backend/uploads/

@@ -1,72 +1,74 @@
-"use client"
+import { useState, useEffect, useRef, forwardRef } from "react";
+import styles from "./NotificationDropdown.module.scss";
+import classNames from "classnames/bind";
+import NotificationList from "./NotificationList";
+import { useAuth } from "~/contexts/AuthContext";
+import { useNotifications } from "~/contexts/NotificationContext";
 
-import { useState, useEffect, useRef, forwardRef } from "react"
-import styles from "./NotificationDropdown.module.scss"
-import classNames from "classnames/bind"
-import NotificationList from "./NotificationList"
-import { sampleNotifications } from "./sampleNotifications"
+const cx = classNames.bind(styles);
 
-const cx = classNames.bind(styles)
+const NotificationDropdown = forwardRef(({ children }, ref) => {
+  const { notifications, unreadCount, loading, error, markAsRead, markAllAsRead } = useNotifications();
+  const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
+  const dropdownRef = useRef(null);
 
-const NotificationDropdown = forwardRef(({ children }, ref) => {  // <- sửa ở đây
-  const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState([])
-  const dropdownRef = useRef(null)
-
-  useEffect(() => {
-    // Simulate fetching notifications
-    setNotifications(sampleNotifications)
-  }, [])
-
-  // const unreadCount = notifications.filter((notification) => !notification.is_read).length
-
-  const toggleDropdown = () => {
-    setIsOpen(!isOpen)
-  }
-
-  const handleMarkAsRead = (notificationId) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) =>
-        notification._id === notificationId ? { ...notification, is_read: true } : notification,
-      ),
-    )
-  }
-
-  const handleMarkAllAsRead = () => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.map((notification) => ({ ...notification, is_read: true })),
-    )
-  }
-
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false)
+        setIsOpen(false);
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const toggleDropdown = () => {
+    setIsOpen(!isOpen);
+  };
+
+  // Bọc hàm markAsRead để tự động truyền user.id
+  const handleMarkAsRead = (notificationId) => {
+    if (user?.id) {
+      markAsRead(user.id, notificationId);
+    } else {
+      console.error("Không thể đánh dấu thông báo đã đọc: userId không tồn tại");
     }
-  }, [])
+  };
+
+  // Bọc hàm markAllAsRead để tự động truyền user.id
+  const handleMarkAllAsRead = () => {
+    if (user?.id) {
+      markAllAsRead(user.id);
+    } else {
+      console.error("Không thể đánh dấu tất cả thông báo đã đọc: userId không tồn tại");
+    }
+  };
 
   return (
     <div className={cx("notification-dropdown-container")} ref={ref}>
       <div onClick={toggleDropdown}>{children}</div>
 
-      {isOpen && (
+      {isOpen && user?.id && (
         <div className={cx("dropdown-content")}>
-          <NotificationList
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
-            onMarkAllAsRead={handleMarkAllAsRead}
-          />
+          {loading ? (
+            <div className={cx("loading")}>Đang tải...</div>
+          ) : error ? (
+            <div className={cx("error")}>{error}</div>
+          ) : (
+            <NotificationList
+              notifications={notifications}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+            />
+          )}
         </div>
       )}
     </div>
-  )
-})
+  );
+});
 
-export default NotificationDropdown
+export default NotificationDropdown;

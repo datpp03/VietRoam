@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import { Icon } from "leaflet";
-import { FileImage, FileVideo, MapPin, Hash, Globe, Lock, Users, X, Plus, Send, Locate } from "lucide-react";
+import { FileImage, FileVideo, MapPin, Hash, Globe, Lock, Users, X, Plus, Send, Locate, CheckCircle, AlertCircle } from "lucide-react";
 import classNames from "classnames/bind";
 import styles from "./PostUploader.module.scss";
 import "leaflet/dist/leaflet.css";
+import { createPost } from "../../services/postService";
 
 const cx = classNames.bind(styles);
 
@@ -17,6 +18,37 @@ const customIcon = new Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+// Modal Component
+const Modal = ({ isOpen, onClose, type, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className={cx("modal-overlay")}>
+      <div className={cx("modal", type)}>
+        <div className={cx("modal-header")}>
+          {type === "success" ? (
+            <CheckCircle size={24} className={cx("modal-icon")} />
+          ) : (
+            <AlertCircle size={24} className={cx("modal-icon")} />
+          )}
+          <h3 className={cx("modal-title")}>{title}</h3>
+          <button className={cx("modal-close")} onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className={cx("modal-body")}>
+          <p>{message}</p>
+        </div>
+        <div className={cx("modal-footer")}>
+          <button className={cx("modal-button")} onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Component xử lý chức năng "Vị trí của tôi"
 function LocationMarker({ setPosition, setLocationInfo }) {
@@ -102,10 +134,18 @@ const PostUploader = () => {
   const [contentError, setContentError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [mediaType, setMediaType] = useState(null); // "image" hoặc "video"
+  // State cho modal
+  const [modal, setModal] = useState({ isOpen: false, type: "", title: "", message: "" });
 
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
   const contentRef = useRef(null);
+
+  // Hàm đóng modal
+  const closeModal = () => {
+    setModal({ isOpen: false, type: "", title: "", message: "" });
+  };
 
   // Tự động lấy vị trí khi component mount
   useEffect(() => {
@@ -188,6 +228,31 @@ const PostUploader = () => {
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
 
+    // Kiểm tra nếu đã chọn video trước đó
+    if (mediaType === "video") {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi tải tệp",
+        message: "Bạn chỉ có thể tải ảnh hoặc video, không thể tải cả hai.",
+      });
+      return;
+    }
+
+    // Kiểm tra số lượng ảnh tối đa
+    const newImagesCount = files.length;
+    if (media.length + newImagesCount > 50) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi tải tệp",
+        message: "Bạn chỉ có thể tải tối đa 50 ảnh.",
+      });
+      return;
+    }
+
+    setMediaType("image");
+
     files.forEach((file) => {
       if (!file.type.startsWith("image/")) return;
 
@@ -210,6 +275,30 @@ const PostUploader = () => {
   // Xử lý upload video
   const handleVideoUpload = (e) => {
     const files = Array.from(e.target.files);
+
+    // Kiểm tra nếu đã chọn ảnh trước đó
+    if (mediaType === "image") {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi tải tệp",
+        message: "Bạn chỉ có thể tải ảnh hoặc video, không thể tải cả hai.",
+      });
+      return;
+    }
+
+    // Kiểm tra số lượng video tối đa
+    if (media.length >= 1) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi tải tệp",
+        message: "Bạn chỉ có thể tải tối đa 1 video.",
+      });
+      return;
+    }
+
+    setMediaType("video");
 
     files.forEach((file) => {
       if (!file.type.startsWith("video/")) return;
@@ -248,7 +337,14 @@ const PostUploader = () => {
 
   // Xóa media
   const removeMedia = (index) => {
-    setMedia((prev) => prev.filter((_, i) => i !== index));
+    setMedia((prev) => {
+      const newMedia = prev.filter((_, i) => i !== index);
+      // Nếu xóa hết media, reset mediaType
+      if (newMedia.length === 0) {
+        setMediaType(null);
+      }
+      return newMedia;
+    });
   };
 
   // Xử lý thêm tag
@@ -287,35 +383,62 @@ const PostUploader = () => {
     e.preventDefault();
 
     if (content.length < 10 || content.length > 2000) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi nội dung",
+        message: "Nội dung phải từ 10 đến 2000 ký tự.",
+      });
       return;
     }
 
     if (media.length === 0) {
-      alert("Vui lòng thêm ít nhất một hình ảnh hoặc video");
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi media",
+        message: "Vui lòng thêm ít nhất một hình ảnh hoặc video.",
+      });
+      return;
+    }
+
+    if (locationInfo && (!locationInfo.coordinates || locationInfo.coordinates.length !== 2)) {
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi vị trí",
+        message: "Vị trí không hợp lệ. Vui lòng chọn lại.",
+      });
       return;
     }
 
     setIsSubmitting(true);
 
-    const postData = {
-      content,
-      media: media.map((item) => ({
-        type: item.type,
-        url: item.url,
-        thumbnail: item.thumbnail,
-        description: item.description,
-      })),
-      location: locationInfo,
-      tags,
-      status,
-      visibility,
-    };
+    const formData = new FormData();
+    formData.append('content', content);
+    media.forEach((item) => {
+      formData.append('media', item.file);
+    });
+    if (locationInfo) {
+      formData.append('location', JSON.stringify(locationInfo));
+    }
+    if (tags.length > 0) {
+      formData.append('tags', JSON.stringify(tags));
+    }
+    formData.append('status', status);
+    formData.append('visibility', visibility);
 
-    console.log("Dữ liệu bài viết:", postData);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await createPost(formData, token);
 
-    // Giả lập gọi API
-    setTimeout(() => {
-      alert("Bài viết đã được tạo thành công!");
+      setModal({
+        isOpen: true,
+        type: "success",
+        title: "Thành công",
+        message: response.message,
+      });
+
       // Reset form
       setContent("");
       setMedia([]);
@@ -325,8 +448,18 @@ const PostUploader = () => {
       setStatus("published");
       setVisibility("public");
       setShowMap(false);
+      setMediaType(null);
+    } catch (error) {
+      console.error('Lỗi khi đăng bài:', error);
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Lỗi đăng bài",
+        message: error.response?.data?.message || 'Lỗi khi đăng bài viết',
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -364,18 +497,28 @@ const PostUploader = () => {
                 </div>
               ))}
 
-              {media.length < 5 && (
+              {(mediaType !== "video" && media.length < 50) || (mediaType !== "image" && media.length < 1) ? (
                 <div className={cx("media-upload-buttons")}>
-                  <button type="button" className={cx("upload-button")} onClick={() => fileInputRef.current.click()}>
+                  <button
+                    type="button"
+                    className={cx("upload-button", { disabled: mediaType === "video" })}
+                    onClick={() => fileInputRef.current.click()}
+                    disabled={mediaType === "video"}
+                  >
                     <FileImage size={24} />
                     <span>Ảnh</span>
                   </button>
-                  <button type="button" className={cx("upload-button")} onClick={() => videoInputRef.current.click()}>
+                  <button
+                    type="button"
+                    className={cx("upload-button", { disabled: mediaType === "image" })}
+                    onClick={() => videoInputRef.current.click()}
+                    disabled={mediaType === "image"}
+                  >
                     <FileVideo size={24} />
                     <span>Video</span>
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
 
             <input
@@ -398,7 +541,11 @@ const PostUploader = () => {
 
           {/* Phần vị trí */}
           <div className={cx("location-section")}>
-            <button type="button" className={cx("location-button", { active: locationInfo })} onClick={toggleMap}>
+          <button
+              type="button"
+              className={cx("location-button", { active: locationInfo })}
+              onClick={toggleMap}
+            >
               <MapPin size={20} />
               <span>
                 {isLoadingLocation ? "Đang lấy vị trí..." : locationInfo ? locationInfo.name : "Thêm vị trí"}
@@ -416,7 +563,6 @@ const PostUploader = () => {
                 </button>
               )}
             </button>
-
             {showMap && (
               <div className={cx("map-container")}>
                 <MapContainer
@@ -427,16 +573,16 @@ const PostUploader = () => {
                 >
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
-                  <LocationPicker 
-                    setPosition={setPosition} 
-                    position={position} 
-                    setLocationInfo={setLocationInfo} 
+                  <LocationPicker
+                    setPosition={setPosition}
+                    position={position}
+                    setLocationInfo={setLocationInfo}
                   />
-                  <LocationMarker 
-                    setPosition={setPosition} 
-                    setLocationInfo={setLocationInfo} 
+                  <LocationMarker
+                    setPosition={setPosition}
+                    setLocationInfo={setLocationInfo}
                   />
                 </MapContainer>
                 {locationInfo && (
@@ -482,15 +628,6 @@ const PostUploader = () => {
 
           {/* Các tùy chọn */}
           <div className={cx("options-section")}>
-            {/* <div className={cx("option")}>
-              <label>Trạng thái:</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className={cx("select")}>
-                <option value="published">Đăng ngay</option>
-                <option value="draft">Lưu nháp</option>
-                <option value="archived">Lưu trữ</option>
-              </select>
-            </div> */}
-
             <div className={cx("option")}>
               <label>Hiển thị:</label>
               <div className={cx("visibility-options")}>
@@ -535,6 +672,13 @@ const PostUploader = () => {
           </div>
         </form>
       </div>
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={closeModal}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+      />
     </div>
   );
 };

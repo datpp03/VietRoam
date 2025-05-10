@@ -19,20 +19,22 @@ class MessageService {
   async getConversations() {
     try {
       const response = await this.api.get("/api/messages/conversations");
+      console.log("getConversations response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching conversations:", error);
-      throw error;
+      return { success: false, conversations: [], users: {} };
     }
   }
 
   async getMessages(conversationId) {
     try {
       const response = await this.api.get(`/api/messages/conversations/${conversationId}`);
+      console.log("getMessages response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching messages:", error);
-      throw error;
+      return { success: false, messages: [], isMutualFollow: false };
     }
   }
 
@@ -43,6 +45,7 @@ class MessageService {
         content,
         media,
       });
+      console.log("sendMessage response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error sending message:", error);
@@ -53,6 +56,7 @@ class MessageService {
   async markAsRead(messageId) {
     try {
       const response = await this.api.put(`/api/messages/mark-read/${messageId}`);
+      console.log("markAsRead response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error marking message as read:", error);
@@ -63,6 +67,7 @@ class MessageService {
   async markAllAsRead(conversationId) {
     try {
       const response = await this.api.put(`/api/messages/mark-all-read/${conversationId}`);
+      console.log("markAllAsRead response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error marking all messages as read:", error);
@@ -70,15 +75,16 @@ class MessageService {
     }
   }
 
-  async searchUsers(query) {
+  async searchFollowUsers(query) {
     try {
-      const response = await this.api.get(`/api/users/search`, {
+      const response = await this.api.get(`/api/users/searchfollow`, {
         params: { q: query },
       });
+
       return response.data;
     } catch (error) {
       console.error("Error searching users:", error);
-      throw error;
+      return { success: false, users: [] };
     }
   }
 }

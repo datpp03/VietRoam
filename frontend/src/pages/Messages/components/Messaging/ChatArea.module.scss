@@ -125,6 +125,7 @@
 
 .messages-container {
   flex: 1;
+  min-height: 0; /* SỬA: Đảm bảo container không bị co lại */
   overflow-y: auto;
   padding: 16px;
   background-color: #f8f8f8;
@@ -188,6 +189,7 @@
   flex-direction: column;
   align-items: flex-start;
   max-width: 70%;
+  margin-bottom: 8px; /* SỬA: Thêm khoảng cách giữa các tin nhắn */
   animation: fadeIn 0.3s ease;
   
   &.current-user {
@@ -342,7 +344,8 @@
   object-fit: cover;
 }
 
-.video-thumbnail, .file-thumbnail {
+.video-thumbnail,
+.file-thumbnail {
   width: 100%;
   height: 100%;
   display: flex;
@@ -387,7 +390,8 @@
   position: relative;
 }
 
-.attachment-button, .emoji-button {
+.attachment-button,
+.emoji-button {
   background: none;
   border: none;
   width: 40px;
@@ -567,7 +571,8 @@
 }
 
 @keyframes typing {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {

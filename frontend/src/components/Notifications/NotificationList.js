@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState } from "react"
 import NotificationItem from "./NotificationItem"
@@ -51,13 +51,6 @@ const NotificationList = ({ notifications, onMarkAsRead, onMarkAllAsRead }) => {
         >
           <FontAwesomeIcon icon={faUserPlus} />
           <span>Theo dõi</span>
-        </button>
-        <button
-          className={cx("filter-button", { active: activeFilter === "mention" })}
-          onClick={() => setActiveFilter("mention")}
-        >
-          <FontAwesomeIcon icon={faAt} />
-          <span>Nhắc đến</span>
         </button>
       </div>
 

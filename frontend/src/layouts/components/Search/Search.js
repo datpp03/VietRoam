@@ -18,6 +18,7 @@ function Search() {
     const [searchResult, setSearchResult] = useState([]);
     const [showResult, setShowResult] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const debouncedValue = useDebounce(searchValue, 500);
 
@@ -26,16 +27,23 @@ function Search() {
     useEffect(() => {
         if (!debouncedValue.trim()) {
             setSearchResult([]);
+            setError(null);
             return;
         }
 
         const fetchApi = async () => {
             setLoading(true);
+            setError(null);
 
-            const result = await searchServices.search(debouncedValue);
-
-            setSearchResult(result);
-            setLoading(false);
+            try {
+                const result = await searchServices.search(debouncedValue, 'less');
+                
+                setSearchResult(result.users || []);
+            } catch (err) {
+                setError('Không thể tải kết quả tìm kiếm');
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchApi();
@@ -44,6 +52,7 @@ function Search() {
     const handleClear = () => {
         setSearchValue('');
         setSearchResult([]);
+        setError(null);
         inputRef.current.focus();
     };
 
@@ -59,8 +68,6 @@ function Search() {
     };
 
     return (
-        // Using a wrapper <div> tag around the reference element solves
-        // this by creating a new parentNode context.
         <div>
             <HeadlessTippy
                 interactive
@@ -69,9 +76,13 @@ function Search() {
                     <div className={cx('search-result')} tabIndex="-1" {...attrs}>
                         <PopperWrapper>
                             <h4 className={cx('search-title')}>Accounts</h4>
-                            {searchResult.map((result) => (
-                                <AccountItem key={result.id} data={result} />
-                            ))}
+                            {error ? (
+                                <p className={cx('search-title')}>{error}</p>
+                            ) : (
+                                searchResult.map((result) => (
+                                    <AccountItem key={result._id} data={result} />
+                                ))
+                            )}
                         </PopperWrapper>
                     </div>
                 )}

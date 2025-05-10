@@ -1,6 +1,5 @@
-"use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import styles from "./ChatArea.module.scss";
 import classNames from "classnames/bind";
 import { Send, Paperclip, Smile, Check, CheckCheck, ImageIcon, Phone, Video, X, Info } from "lucide-react";
@@ -11,12 +10,15 @@ import axios from "axios";
 const cx = classNames.bind(styles);
 
 const formatTime = (dateString) => {
+  if (!dateString) return "";
   const date = new Date(dateString);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return isNaN(date.getTime()) ? "" : date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
 const formatDate = (dateString) => {
+  if (!dateString) return "";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -31,55 +33,92 @@ const formatDate = (dateString) => {
 };
 
 const groupMessagesByDate = (messages) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log("groupMessagesByDate: Input messages:", messages);
+  }
   const groups = {};
   messages.forEach((message) => {
-    const date = new Date(message.createdAt).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
+    if (!message.createdAt) {
+      console.warn("Missing createdAt in message:", message);
+      return;
     }
-    groups[date].push(message);
+    const date = new Date(message.createdAt);
+    if (isNaN(date.getTime())) {
+      console.warn("Invalid date in message:", message);
+      return;
+    }
+    const dateString = date.toDateString();
+    if (!groups[dateString]) {
+      groups[dateString] = [];
+    }
+    groups[dateString].push(message);
   });
-  return Object.entries(groups).map(([date, messages]) => ({
+  const result = Object.entries(groups).map(([date, messages]) => ({
     date,
-    messages,
+    messages: messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
   }));
+  if (process.env.NODE_ENV === "development") {
+    console.log("groupMessagesByDate: Grouped result:", result);
+  }
+  return result;
 };
 
 const MessageBubble = ({ message, isCurrentUser, onImageClick }) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log("MessageBubble: Rendering message:", message);
+  }
+
+  const renderMedia = (media, index) => {
+    if (!media?.url || !media?.type) {
+      console.warn("Invalid media in message:", media);
+      return null;
+    }
+    if (media.type === "image") {
+      return (
+        <img
+          key={index}
+          src={media.url || "/placeholder.svg?height=300&width=300"}
+          alt={media.filename || "Image"}
+          className={cx("media-image")}
+          onClick={() => onImageClick(media.url)}
+        />
+      );
+    } else if (media.type === "video") {
+      return (
+        <video key={index} src={media.url} controls className={cx("media-video")}>
+          Your browser does not support the video tag.
+        </video>
+      );
+    } else {
+      return (
+        <div key={index} className={cx("media-file")}>
+          <Paperclip size={16} />
+          <span>{media.filename || "File"}</span>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className={cx("message-container", { "current-user": isCurrentUser })}>
-      <div className={cx("message-bubble")}>
+      <div className={cx("message-bubble", { pending: message.tempId })}>
         {message.content && <p className={cx("message-text")}>{message.content}</p>}
         {message.media && message.media.length > 0 && (
           <div className={cx("message-media")}>
-            {message.media.map((media, index) => (
-              <div key={index} className={cx("media-item")}>
-                {media.type === "image" ? (
-                  <img
-                    src={media.url || "/placeholder.svg?height=300&width=300"}
-                    alt={media.filename || "Image"}
-                    className={cx("media-image")}
-                    onClick={() => onImageClick(media.url)}
-                  />
-                ) : media.type === "video" ? (
-                  <video src={media.url} controls className={cx("media-video")}>
-                    Your browser does not support the video tag.
-                  </video>
-                ) : (
-                  <div className={cx("media-file")}>
-                    <Paperclip size={16} />
-                    <span>{media.filename || "File"}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+            {message.media.map((media, index) => renderMedia(media, index))}
           </div>
         )}
         <div className={cx("message-info")}>
           <span className={cx("message-time")}>{formatTime(message.createdAt)}</span>
           {isCurrentUser && (
             <span className={cx("message-status")}>
-              {message.is_read ? <CheckCheck size={14} /> : <Check size={14} />}
+              {message.tempId ? (
+                <Check size={14} />
+              ) : message.is_read ? (
+                <CheckCheck size={14} />
+              ) : (
+                <Check size={14} />
+              )}
             </span>
           )}
         </div>
@@ -99,7 +138,22 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
   const typingTimeoutRef = useRef(null);
   const messageInputRef = useRef(null);
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("ChatArea: Received messages:", messages);
+    console.log("ChatArea: Message count:", messages.length);
+    console.log("ChatArea: Message IDs:", messages.map((msg) => msg._id || msg.tempId));
+  }
+
+  const groupedMessages = useMemo(() => {
+    return groupMessagesByDate(messages);
+  }, [messages]);
+
   useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("ChatArea: Messages updated:", messages);
+      console.log("ChatArea: Updated message count:", messages.length);
+      console.log("ChatArea: Updated message IDs:", messages.map((msg) => msg._id || msg.tempId));
+    }
     scrollToBottom();
   }, [messages]);
 
@@ -135,15 +189,25 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
   }, [newMessage]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    } else {
+      console.warn("ChatArea: messagesEndRef is not set");
+      const container = document.querySelector(`.${cx("messages-container")}`);
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!isMutualFollow || (!newMessage.trim() && mediaAttachments.length === 0)) {
+      console.log("handleSendMessage: Cannot send message, isMutualFollow:", isMutualFollow);
       return;
     }
 
+    console.log("handleSendMessage: Sending message, content:", newMessage, "media:", mediaAttachments);
     onSendMessage(newMessage.trim(), mediaAttachments);
     setNewMessage("");
     setMediaAttachments([]);
@@ -162,7 +226,10 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
   };
 
   const handleFileSelect = async (e) => {
-    if (!isMutualFollow) return;
+    if (!isMutualFollow) {
+      console.log("handleFileSelect: Cannot upload files, isMutualFollow:", isMutualFollow);
+      return;
+    }
 
     const files = Array.from(e.target.files);
     const formData = new FormData();
@@ -176,38 +243,43 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
       );
-
+      console.log("handleFileSelect: Upload response:", response.data);
       const newAttachments = response.data.media;
       setMediaAttachments([...mediaAttachments, ...newAttachments]);
     } catch (error) {
-      console.error("Error uploading media:", error);
+      console.error("handleFileSelect: Error uploading media:", error);
     }
 
     e.target.value = null;
   };
 
   const removeAttachment = (index) => {
+    console.log("removeAttachment: Removing attachment at index:", index);
     const newAttachments = [...mediaAttachments];
     newAttachments.splice(index, 1);
     setMediaAttachments(newAttachments);
   };
 
   const handleEmojiSelect = (emoji) => {
-    if (!isMutualFollow) return;
+    if (!isMutualFollow) {
+      console.log("handleEmojiSelect: Cannot add emoji, isMutualFollow:", isMutualFollow);
+      return;
+    }
+    console.log("handleEmojiSelect: Adding emoji:", emoji);
     setNewMessage((prev) => prev + emoji.native);
     setShowEmojiPicker(false);
     messageInputRef.current?.focus();
   };
 
   const handleImageClick = (url) => {
+    console.log("handleImageClick: Opening image preview:", url);
     setPreviewImage(url);
   };
 
   const closeImagePreview = () => {
+    console.log("closeImagePreview: Closing image preview");
     setPreviewImage(null);
   };
-
-  const groupedMessages = groupMessagesByDate(messages);
 
   return (
     <div className={cx("chat-area")}>
@@ -242,23 +314,23 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
           </div>
         </div>
         <div className={cx("chat-actions")}>
-          <button className={cx("action-button")} aria-label="Voice call">
-            <Phone size={18} />
+          <button className={cx("action-button")} aria-label="Call">
+            <Phone size={20} />
           </button>
           <button className={cx("action-button")} aria-label="Video call">
-            <Video size={18} />
+            <Video size={20} />
           </button>
           <button className={cx("action-button")} aria-label="Info">
-            <Info size={18} />
+            <Info size={20} />
           </button>
         </div>
       </div>
+      {!isMutualFollow && (
+        <div className={cx("mutual-follow-notice")}>
+          <p>You must both follow each other to send new messages.</p>
+        </div>
+      )}
       <div className={cx("messages-container")}>
-        {!isMutualFollow && (
-          <div className={cx("mutual-follow-notice")}>
-            <p>You must both follow each other to send new messages.</p>
-          </div>
-        )}
         {groupedMessages.map((group, groupIndex) => (
           <div key={groupIndex} className={cx("message-group")}>
             <div className={cx("date-separator")}>
@@ -266,9 +338,11 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
             </div>
             {group.messages.map((message) => (
               <MessageBubble
-                key={message._id}
+                key={message._id || message.tempId}
                 message={message}
-                isCurrentUser={message.sender_id._id === currentUser.id}
+                isCurrentUser={
+                  message.sender_id?._id === currentUser.id || message.sender_id === currentUser.id
+                }
                 onImageClick={handleImageClick}
               />
             ))}
@@ -276,105 +350,103 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
         ))}
         <div ref={messagesEndRef} />
       </div>
-      {mediaAttachments.length > 0 && isMutualFollow && (
-        <div className={cx("attachments-preview")}>
-          {mediaAttachments.map((media, index) => (
-            <div key={index} className={cx("attachment-item")}>
-              {media.type === "image" ? (
-                <img
-                  src={media.url || "/placeholder.svg?height=100&width=100"}
-                  alt={media.filename}
-                  className={cx("attachment-thumbnail")}
-                />
-              ) : media.type === "video" ? (
-                <div className={cx("video-thumbnail")}>
-                  <span>Video</span>
-                </div>
-              ) : (
-                <div className={cx("file-thumbnail")}>
-                  <span>{media.filename}</span>
-                </div>
-              )}
-              <button className={cx("remove-attachment")} onClick={() => removeAttachment(index)}>
-                &times;
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <form className={cx("message-input-container")} onSubmit={handleSendMessage}>
-        <button
-          type="button"
-          className={cx("attachment-button", { disabled: !isMutualFollow })}
-          onClick={() => isMutualFollow && fileInputRef.current.click()}
-          aria-label="Attach file"
-          disabled={!isMutualFollow}
-        >
-          <Paperclip size={20} />
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          onChange={handleFileSelect}
-          multiple
-          accept="image/*,video/*,application/*"
-        />
-        <button
-          type="button"
-          className={cx("attachment-button", { disabled: !isMutualFollow })}
-          aria-label="Attach image"
-          disabled={!isMutualFollow}
-        >
-          <ImageIcon size={20} />
-        </button>
-        <div className={cx("message-input-wrapper")}>
-          <textarea
-            ref={messageInputRef}
-            placeholder={isMutualFollow ? "Type a message..." : "Messaging disabled"}
-            value={newMessage}
-            onChange={(e) => isMutualFollow && setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className={cx("message-input", { disabled: !isMutualFollow })}
-            rows={1}
-            disabled={!isMutualFollow}
+      <form onSubmit={handleSendMessage} className={cx("message-form")}>
+        {mediaAttachments.length > 0 && (
+          <div className={cx("attachments-preview")}>
+            {mediaAttachments.map((attachment, index) => (
+              <div key={index} className={cx("attachment-item")}>
+                {attachment.type === "image" ? (
+                  <img
+                    src={attachment.url}
+                    alt={attachment.filename}
+                    className={cx("attachment-thumbnail")}
+                  />
+                ) : attachment.type === "video" ? (
+                  <div className={cx("video-thumbnail")}>
+                    <Video size={24} />
+                    <span>{attachment.filename}</span>
+                  </div>
+                ) : (
+                  <div className={cx("file-thumbnail")}>
+                    <Paperclip size={24} />
+                    <span>{attachment.filename}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={cx("remove-attachment")}
+                  onClick={() => removeAttachment(index)}
+                  aria-label="Remove attachment"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className={cx("message-input-container")}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            multiple
+            accept="image/*,video/*,.pdf"
+            style={{ display: "none" }}
           />
-        </div>
-        <button
-          type="button"
-          className={cx("emoji-button", { disabled: !isMutualFollow })}
-          onClick={() => isMutualFollow && setShowEmojiPicker(!showEmojiPicker)}
-          aria-label="Emoji"
-          disabled={!isMutualFollow}
-        >
-          <Smile size={20} />
-        </button>
-        <button
-          type="submit"
-          className={cx("send-button", {
-            active: isMutualFollow && (newMessage.trim() || mediaAttachments.length > 0),
-          })}
-          disabled={!isMutualFollow || (!newMessage.trim() && mediaAttachments.length === 0)}
-          aria-label="Send message"
-        >
-          <Send size={20} />
-        </button>
-        {showEmojiPicker && isMutualFollow && (
-          <div className={cx("emoji-picker")}>
-            <Picker
-              data={data}
-              onEmojiSelect={handleEmojiSelect}
-              theme="light"
-              previewPosition="none"
-              skinTonePosition="none"
+          <button
+            type="button"
+            className={cx("attachment-button", { disabled: !isMutualFollow })}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!isMutualFollow}
+            aria-label="Attach file"
+          >
+            <Paperclip size={20} />
+          </button>
+          <div className={cx("message-input-wrapper")}>
+            <textarea
+              ref={messageInputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className={cx("message-input", { disabled: !isMutualFollow })}
+              disabled={!isMutualFollow}
             />
+          </div>
+          <button
+            type="button"
+            className={cx("emoji-button", { disabled: !isMutualFollow })}
+            onClick={() => setShowEmojiPicker((prev) => !prev)}
+            disabled={!isMutualFollow}
+            aria-label="Toggle emoji picker"
+          >
+            <Smile size={20} />
+          </button>
+          <button
+            type="submit"
+            className={cx("send-button", {
+              active: isMutualFollow && (newMessage.trim() || mediaAttachments.length > 0),
+            })}
+            disabled={!isMutualFollow || (!newMessage.trim() && mediaAttachments.length === 0)}
+            aria-label="Send message"
+          >
+            <Send size={20} />
+          </button>
+        </div>
+        {showEmojiPicker && (
+          <div className={cx("emoji-picker")}>
+            <Picker data={data} onEmojiSelect={handleEmojiSelect} />
           </div>
         )}
       </form>
       {previewImage && (
-        <div className={cx("image-preview-modal")} onClick={closeImagePreview}>
-          <img src={previewImage || "/placeholder.svg"} alt="Preview" className={cx("preview-image")} />
-          <button className={cx("close-preview")} onClick={closeImagePreview}>
+        <div className={cx("image-preview-modal")}>
+          <img src={previewImage} alt="Preview" className={cx("preview-image")} />
+          <button
+            className={cx("close-preview")}
+            onClick={closeImagePreview}
+            aria-label="Close image preview"
+          >
             <X size={24} />
           </button>
         </div>
