@@ -26,34 +26,35 @@ export const createPost = async (postData, token) => {
 };
 
 export const getPosts = async () => {
-  
   const response = await axiosInstance.get(`/posts`);
   return response.data;
 };
+
 export const getPostsIsLogin = async (myId) => {
-  
   const response = await axiosInstance.get(`/posts/${myId}`);
   return response.data;
 };
+
 export const getPostsFollowing = async (myId) => {
-  
   const response = await axiosInstance.get(`/posts/following/${myId}`);
   return response.data;
 };
+
 export const getLikedPosts = async (myId) => {
   const response = await axiosInstance.get(`/posts/likes/${myId}`);
   return response.data;
 };
+
 export const getPostsUser = async (userId) => {
-  
   const response = await axiosInstance.get(`/posts/user/${userId}`);
   return response.data;
 };
+
 export const getMyPosts = async (userId) => {
-  
   const response = await axiosInstance.get(`/myposts/${userId}`);
   return response.data;
 };
+
 export const toggleLike = async (postId, userId, token, isLiked) => {
   if (!postId || !userId || !token) {
     console.error('Invalid parameters for toggleLike:', { postId, userId, token });
@@ -90,6 +91,13 @@ export const archivePost = async (postId, token) => {
 export const updatePostStatus = async (postId, status, visibility, token) => {
   const response = await axiosInstance.patch(`/posts/${postId}/status`, { status, visibility }, {
     headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+export const getLocationStats = async ({ minPosts, country, city }) => {
+  const response = await axiosInstance.get('/posts/location-stats', {
+    params: { minPosts, country, city },
   });
   return response.data;
 };

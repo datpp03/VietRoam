@@ -33,11 +33,10 @@ const userSchema = new Schema(
         type: String,
         enum: ["Adventure", "Cultural", "Food", "Historical", "Nature", "Beach", "Urban Exploration"],
       },
-    ],
+    ],                             
     role: {
-      type: String,
-      enum: ["user", "moderator", "admin"],
-      default: "user",
+      type: Boolean,
+      default: true,
     },
     social_links: {
       website: {

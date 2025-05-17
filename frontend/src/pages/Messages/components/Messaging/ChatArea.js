@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import styles from "./ChatArea.module.scss";
 import classNames from "classnames/bind";
-import { Send, Paperclip, Smile, Check, CheckCheck, ImageIcon, Phone, Video, X, Info } from "lucide-react";
+import { Send, Paperclip, Smile, Check, CheckCheck, Phone, Video, X, Info } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import axios from "axios";
@@ -237,7 +237,7 @@ const ChatArea = ({ conversation, messages, currentUser, chatPartner, onSendMess
 
     try {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/messages/upload`,
+        `http://localhost:3001/api/messages/upload`,
         formData,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },

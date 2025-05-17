@@ -8,7 +8,7 @@ import { useNotifications } from "~/contexts/NotificationContext";
 const cx = classNames.bind(styles);
 
 const NotificationDropdown = forwardRef(({ children }, ref) => {
-  const { notifications, unreadCount, loading, error, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, loading, error, markAsRead, markAllAsRead } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
   const dropdownRef = useRef(null);

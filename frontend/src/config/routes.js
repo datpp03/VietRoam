@@ -1,4 +1,4 @@
-const routes = {
+export const routes = {
     home: '/',
     following: '/following',
     profile: '/@:username',
@@ -9,5 +9,10 @@ const routes = {
     messages: '/messages',
     activity: '/activity',
 };
-
-export default routes;
+export const adminRoutes = {
+    home: '/admin',
+    user: '/admin/accounts',
+    2: '/admin/',
+    3: '/admin/',
+    4: '/admin/',
+};

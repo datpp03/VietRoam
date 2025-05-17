@@ -15,13 +15,17 @@ const Following = () => {
       try {
         setLoading(true)
 
-          const postData = await getPostsFollowing(user.id)
-          
-          const fetchedPosts = postData.posts || []
-          const userIds = [...new Set(fetchedPosts.map(post => post.user_id))]
-          const userData = await getUsersBatch(userIds)
-          setPosts(fetchedPosts)
-          setUsers(userData.users || [])
+          if (user) {
+            const postData = await getPostsFollowing(user?.id)
+            const fetchedPosts = postData.posts || []
+            if (fetchedPosts.length !== 0) {
+              const userIds = [...new Set(fetchedPosts.map(post => post.user_id))]
+              const userData = await getUsersBatch(userIds)
+              setPosts(fetchedPosts)
+              setUsers(userData.users || [])
+            }
+           
+          }
       } catch (error) {
         console.error('Error fetching posts:', error)
         if (error.response) {
@@ -33,6 +37,7 @@ const Following = () => {
     }
 
     fetchPosts()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
   return (

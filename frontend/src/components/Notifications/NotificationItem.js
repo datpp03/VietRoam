@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, UserPlus, Reply, AtSign, Check } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Reply, Check } from "lucide-react";
 import styles from "./NotificationItem.module.scss";
 import classNames from "classnames/bind";
 import { formatTimeAgo } from "~/utils/dateUtils";

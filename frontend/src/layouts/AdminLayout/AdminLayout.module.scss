@@ -1,0 +1,28 @@
+/* AdminLayout.module.scss */
+
+.wrapper {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(to bottom right, #f0f4f8, #d9e2ec);
+}
+
+.container {
+    width: 1550px;
+    max-width: 100%;
+    padding: 24px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: row-reverse; /* Sidebar bên phải */
+    gap: 24px;
+}
+
+.content {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    overflow-y: auto; /* Cho phép cuộn theo chiều dọc */
+    max-height: calc(100vh - 48px); /* Đảm bảo chiều cao tối đa không vượt quá khung, trừ padding */
+    box-sizing: border-box; /* Đảm bảo padding không làm tăng kích thước khung */
+}

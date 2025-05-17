@@ -18,6 +18,7 @@ const upload = multer({
 
 const router = express.Router();
 
+router.get("/posts/location-stats", postController.getLocationStats);
 router.get('/posts/:myId', postController.getPostsIsLogin);
 router.get('/posts/likes/:myId', postController.getLikedPosts);
 router.get('/posts/following/:myId', postController.getPostsFollowing);

@@ -16,7 +16,7 @@ axiosInstance.interceptors.response.use(
 );
 
 export const getUsersBatch = async (userIds) => {
-  const response = await axiosInstance.post('/users/batch', { userIds});
+  const response = await axiosInstance.post('/users/batch', { userIds });
   return response.data;
 };
 
@@ -28,8 +28,6 @@ export const getProfileUser = async (username, token) => {
 };
 
 export const followUser = async (userId, token) => {
-  console.log("123123");
-  
   const response = await axiosInstance.post(
     '/users/follow',
     { userId },
@@ -58,6 +56,27 @@ export const updateUser = async (userId, userData, token) => {
   return response.data;
 };
 
+export const toggleVerification = async (userId, token) => {
+  const response = await axiosInstance.patch(`/users/${userId}/toggle-verification`, {}, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+export const deleteUser = async (userId, token) => {
+  const response = await axiosInstance.delete(`/users/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+export const searchAllUsers = async ({ q }) => {
+  const response = await axiosInstance.get('/users/search', {
+    params: { q },
+  });
+  return response.data;
+};
+
 // Lấy danh sách quốc gia từ REST Countries
 export const getCountries = async () => {
   try {
@@ -72,9 +91,7 @@ export const getCountries = async () => {
   }
 };
 
-
 export const getCities = async (countryCode) => {
-
   const cityMap = {
     US: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Miami'],
     VN: [
@@ -93,7 +110,6 @@ export const getCities = async (countryCode) => {
       'Hà Nội', 'TP. Hồ Chí Minh', 'Hải Phòng', 'Đà Nẵng', 'Cần Thơ'
     ],
     JP: ['Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya'],
-    
   };
   return cityMap[countryCode] || [];
 };

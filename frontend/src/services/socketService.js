@@ -22,7 +22,7 @@ class SocketService {
       this.socket.disconnect();
     }
 
-    this.socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+    this.socket = io('http://localhost:3001', {
       auth: { token },
       withCredentials: true,
       transports: ['websocket', 'polling'],

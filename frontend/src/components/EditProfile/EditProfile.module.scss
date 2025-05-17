@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.65); /* Slightly darker for better contrast */
+  background: rgba(0, 0, 0, 0.65);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -12,34 +12,24 @@
   animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 .modal-content {
   background: #ffffff;
-  padding: 40px; /* More spacious padding */
-  border-radius: 20px; /* Softer corners */
-  max-width: 640px; /* Slightly wider modal */
+  padding: 40px;
+  border-radius: 20px;
+  max-width: 640px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(22, 24, 35, 0.25); /* Deeper shadow for depth */
+  box-shadow: 0 10px 30px rgba(22, 24, 35, 0.25);
   position: relative;
   animation: slideUp 0.3s ease;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(30px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-h2 {
+.modal h2 {
   font-size: 2.6rem;
   font-weight: 700;
   margin-bottom: 40px;
-  color: #161823; /* Slightly softer black */
+  color: #161823;
   text-align: center;
 }
 
@@ -47,7 +37,7 @@ h2 {
   margin-bottom: 28px;
 }
 
-label {
+.form-group label {
   display: block;
   font-size: 1.6rem;
   font-weight: 600;
@@ -55,8 +45,8 @@ label {
   color: #161823cc;
 }
 
-input,
-textarea {
+.form-group input,
+.form-group textarea {
   width: 100%;
   padding: 14px 16px;
   font-size: 1.6rem;
@@ -64,20 +54,22 @@ textarea {
   border-radius: 12px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
-  &:focus {
-    border-color: #00aaff;
-    box-shadow: 0 0 0 4px rgba(0, 170, 255, 0.2);
-  }
-
-  &:disabled {
-    background: #f9f9f9;
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
 }
 
-textarea {
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #00aaff;
+  box-shadow: 0 0 0 4px rgba(0, 170, 255, 0.2);
+}
+
+.form-group input:disabled,
+.form-group textarea:disabled {
+  background: #f9f9f9;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-group textarea {
   resize: vertical;
   min-height: 160px;
 }
@@ -96,42 +88,42 @@ textarea {
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 180px; /* Larger upload area */
+  height: 180px;
   border: 2px dashed #00aaff;
   border-radius: 16px;
   cursor: pointer;
   background: #f8f9fa;
   transition: all 0.2s ease;
   position: relative;
+}
 
-  &:hover {
-    background: rgba(0, 170, 255, 0.1);
-    border-color: #0099e6;
-  }
+.upload-area:hover {
+  background: rgba(0, 170, 255, 0.1);
+  border-color: #0099e6;
+}
 
-  &.drag-over {
-    background: rgba(0, 170, 255, 0.2);
-    border-color: #007acc;
-  }
+.upload-area.drag-over {
+  background: rgba(0, 170, 255, 0.2);
+  border-color: #007acc;
+}
 
-  svg {
-    color: #00aaff;
-  }
+.upload-area svg {
+  color: #00aaff;
+}
 
-  span {
-    margin-top: 12px;
-    font-size: 1.5rem;
-    color: #00aaff;
-    text-align: center;
-    max-width: 80%;
-  }
+.upload-area span {
+  margin-top: 12px;
+  font-size: 1.5rem;
+  color: #00aaff;
+  text-align: center;
+  max-width: 80%;
 }
 
 .image-preview-container {
   position: relative;
-  width: 140px; /* Larger preview */
+  width: 140px;
   height: 140px;
-  border-radius: 50%; /* Circular avatar */
+  border-radius: 50%;
   overflow: hidden;
   border: 2px solid #e5e5e5;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -156,10 +148,10 @@ textarea {
   gap: 12px;
   opacity: 0;
   transition: opacity 0.2s ease;
+}
 
-  &:hover {
-    opacity: 1;
-  }
+.image-actions:hover {
+  opacity: 1;
 }
 
 .image-action-btn {
@@ -169,15 +161,15 @@ textarea {
   padding: 8px;
   cursor: pointer;
   transition: transform 0.2s ease;
+}
 
-  &:hover {
-    transform: scale(1.1);
-  }
+.image-action-btn:hover {
+  transform: scale(1.1);
+}
 
-  &.remove {
-    background: #ff4d4f;
-    color: #ffffff;
-  }
+.image-action-btn.remove {
+  background: #ff4d4f;
+  color: #ffffff;
 }
 
 .hidden-input {
@@ -191,10 +183,10 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+}
 
-  svg {
-    flex-shrink: 0;
-  }
+.error-message svg {
+  flex-shrink: 0;
 }
 
 .interests {
@@ -213,13 +205,13 @@ textarea {
   font-size: 1.5rem;
   color: #161823;
   cursor: pointer;
+}
 
-  input[type="checkbox"] {
-    accent-color: #00aaff;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-  }
+.interest-option input[type="checkbox"] {
+  accent-color: #00aaff;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
 }
 
 .form-actions {
@@ -258,11 +250,11 @@ textarea {
   color: #161823;
   cursor: pointer;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
 
-  &:hover {
-    background: #00aaff1a;
-    color: #00aaff;
-  }
+.dropdown-item:hover {
+  background: #00aaff1a;
+  color: #00aaff;
 }
 
 .dropdown-item-empty {
@@ -278,12 +270,12 @@ textarea {
     max-width: 95%;
   }
 
-  h2 {
+  .modal h2 {
     font-size: 2.2rem;
   }
 
-  input,
-  textarea {
+  .form-group input,
+  .form-group textarea {
     font-size: 1.5rem;
     padding: 12px 14px;
   }
@@ -307,7 +299,7 @@ textarea {
     padding: 20px;
   }
 
-  h2 {
+  .modal h2 {
     font-size: 2rem;
     margin-bottom: 32px;
   }
@@ -323,4 +315,14 @@ textarea {
   .upload-area {
     height: 140px;
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }

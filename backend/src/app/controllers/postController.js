@@ -221,7 +221,7 @@ const getUserPosts = async (req, res) => {
       posts: postsWithLikes,
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bài viết:', error);
+    console.error('Lỗi khi lấy bài viết 1:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -272,7 +272,7 @@ const getLikedPosts = async (req, res) => {
       posts: postsWithLikes,
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bài viết:', error);
+    console.error('Lỗi khi lấy bài viết 2:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -305,7 +305,7 @@ const getMyPosts = async (req, res) => {
       posts: postsWithLikes,
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bài viết:', error);
+    console.error('Lỗi khi lấy bài viết 3:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -339,7 +339,7 @@ const getPostsFollowing = async (req, res) => {
       posts: postsWithLikes,
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bài viết:', error);
+    console.error('Lỗi khi lấy bài viết 4:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -387,7 +387,7 @@ const getPostsIsLogin = async (req, res) => {
       posts: postsWithLikes,
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bài viết:', error);
+    console.error('Lỗi khi lấy bài viết 5:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -420,7 +420,7 @@ const getPosts = async (req, res) => {
       posts: postsWithLikes,
     });
   } catch (error) {
-    console.error('Lỗi khi lấy bài viết:', error);
+    console.error('Lỗi khi lấy bài viết 6:', error);
     return res.status(500).json({
       success: false,
       message: 'Lỗi server',
@@ -716,5 +716,53 @@ const updatePostStatus = async (req, res) => {
     });
   }
 };
+const getLocationStats = async (req, res)  =>  {
+  try {
+    const { minPosts, country, city } = req.query;
+    console.log("Query params:", req.query);
+    
+    // Xây dựng pipeline aggregation
+    let matchStage = { status: "published" }; // Chỉ lấy bài viết đã xuất bản
+    if (country) {
+      matchStage["location.name"] = { $regex: country, $options: "i" };
+    }
+    if (city) {
+      matchStage["location.name"] = { $regex: city, $options: "i" };
+    }
 
-module.exports = { createPost, toggleLike, getPosts, getComments, getMyPosts, getLikedPosts, createComment, getPostsIsLogin, getPostsFollowing, getUserPosts, deletePost, archivePost, updatePostStatus };
+    const pipeline = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            name: "$location.name",
+            coordinates: "$location.coordinates",
+          },
+          postCount: { $sum: 1 },
+        },
+      },
+      {
+        $match: minPosts ? { postCount: { $gte: parseInt(minPosts) } } : {},
+      },
+      {
+        $sort: { postCount: -1 },
+      },
+      {
+        $project: {
+          name: "$_id.name",
+          coordinates: "$_id.coordinates",
+          postCount: 1,
+          _id: 0,
+        },
+      },
+    ];
+
+    const stats = await Post.aggregate(pipeline);
+
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error("Error fetching location stats:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+}
+module.exports = {getLocationStats, createPost, toggleLike, getPosts, getComments, getMyPosts, getLikedPosts, createComment, getPostsIsLogin, getPostsFollowing, getUserPosts, deletePost, archivePost, updatePostStatus };

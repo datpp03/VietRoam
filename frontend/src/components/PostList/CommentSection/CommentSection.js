@@ -1,51 +1,59 @@
+import { useState, useRef, useEffect } from "react";
+import { Send, X } from "lucide-react";
+import classNames from "classnames/bind";
+import styles from "./CommentSection.module.scss";
+import { useAuth } from "~/contexts/AuthContext";
+import { getComments, createComment } from "~/services/commentService";
+import { Link } from "react-router-dom";
 
-
-import { useState, useRef, useEffect } from "react"
-import { Send, X } from "lucide-react"
-import classNames from "classnames/bind"
-import styles from "./CommentSection.module.scss"
-import { useAuth } from "~/contexts/AuthContext"
-import { getComments, createComment } from "~/services/commentService"
-import { Link } from "react-router-dom"
-
-const cx = classNames.bind(styles)
+const cx = classNames.bind(styles);
 
 // Helper function to format dates
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffInSeconds = Math.floor((now - date) / 1000)
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
 
   if (diffInSeconds < 60) {
-    return "Just now"
+    return "Just now";
   } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60)
-    return `${minutes}m ago`
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m ago`;
   } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours}h ago`
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h ago`;
   } else if (diffInSeconds < 604800) {
-    const days = Math.floor(diffInSeconds / 86400)
-    return `${days}d ago`
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d ago`;
   } else {
-    return date.toLocaleDateString()
+    return date.toLocaleDateString();
   }
-}
+};
 
 const Comment = ({ comment, currentUser }) => {
-  const isCurrentUser = comment.user._id === currentUser?._id
+  const isCurrentUser = comment.user?._id === currentUser?._id;
   
+  // Tạo username từ email hoặc full_name nếu email không tồn tại
+  const username = comment.user?.email
+    ? comment.user.email.split('@')[0]
+    : comment.user?.full_name?.toLowerCase().replace(/\s+/g, '') || 'unknown';
+
   return (
     <div className={cx("comment", { "current-user": isCurrentUser })}>
-      <Link to={`/@${comment.user.email.split('@')[0]}`} className={cx("user-link")}>
-      <div className={cx("comment-avatar")}>
-        <img src={comment.user.profile_picture || "/placeholder.svg"} alt={comment.user.full_name} />
-      </div>
+      <Link to={`/@${username}`} className={cx("user-link")}>
+        <div className={cx("comment-avatar")}>
+          <img
+            src={comment.user?.profile_picture || "/placeholder.svg"}
+            alt={comment.user?.full_name || "User"}
+          />
+        </div>
       </Link>
       <div className={cx("comment-content")}>
         <div className={cx("comment-bubble")}>
           <div className={cx("comment-header")}>
-            <span className={cx("comment-username")}>{comment.user.full_name}</span>
+            <span className={cx("comment-username")}>
+              {comment.user?.full_name || "Unknown User"}
+            </span>
           </div>
           <p className={cx("comment-text")}>{comment.content}</p>
         </div>
@@ -54,61 +62,61 @@ const Comment = ({ comment, currentUser }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 const CommentSection = ({ post, currentUser, isOpen, onClose }) => {
-  const { user, token } = useAuth()
-  const [comments, setComments] = useState([])
-  const [newComment, setNewComment] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const commentInputRef = useRef(null)
-  const commentsContainerRef = useRef(null)
+  const { user, token } = useAuth();
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const commentInputRef = useRef(null);
+  const commentsContainerRef = useRef(null);
 
   // Fetch comments from backend
   useEffect(() => {
     if (isOpen) {
-      setIsLoading(true)
+      setIsLoading(true);
       getComments(post._id, token)
         .then((data) => {
-          setComments(data.comments || [])
-          setIsLoading(false)
+          setComments(data.comments || []);
+          setIsLoading(false);
         })
         .catch((error) => {
-          console.error('Error fetching comments:', error)
-          setIsLoading(false)
-        })
+          console.error('Error fetching comments:', error);
+          setIsLoading(false);
+        });
     }
-  }, [post._id, isOpen, token])
+  }, [post._id, isOpen, token]);
 
   // Focus the comment input when the section opens
   useEffect(() => {
     if (isOpen && commentInputRef.current && user) {
       setTimeout(() => {
-        commentInputRef.current.focus()
-      }, 300)
+        commentInputRef.current.focus();
+      }, 300);
     }
-  }, [isOpen, user])
+  }, [isOpen, user]);
 
   // Scroll to bottom when new comments are added
-  useEffect(() => {
+  useEffect (() => {
     if (commentsContainerRef.current) {
-      commentsContainerRef.current.scrollTop = commentsContainerRef.current.scrollHeight
+      commentsContainerRef.current.scrollTop = commentsContainerRef.current.scrollHeight;
     }
-  }, [comments])
+  }, [comments]);
 
   const handleSubmitComment = async (e) => {
-    e.preventDefault()
-    if (!newComment.trim() || !user || !token) return
+    e.preventDefault();
+    if (!newComment.trim() || !user || !token) return;
 
     try {
-      const data = await createComment(post._id, newComment.trim(), token)
-      setComments([...comments, data.comment])
-      setNewComment("")
+      const data = await createComment(post._id, newComment.trim(), token);
+      setComments([...comments, data.comment]);
+      setNewComment("");
     } catch (error) {
-      console.error('Error posting comment:', error)
+      console.error('Error posting comment:', error);
     }
-  }
+  };
   
   return (
     <div className={cx("comment-section", { open: isOpen, closed: !isOpen })}>
@@ -162,7 +170,7 @@ const CommentSection = ({ post, currentUser, isOpen, onClose }) => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default CommentSection
+export default CommentSection;

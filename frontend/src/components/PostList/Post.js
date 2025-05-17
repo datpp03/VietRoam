@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useRef, useEffect } from "react";
 import classNames from "classnames/bind";
 import styles from "./Post.module.scss";

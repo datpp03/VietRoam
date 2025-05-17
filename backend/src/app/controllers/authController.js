@@ -41,7 +41,12 @@ class AuthController {
           social_links: {},
         });
       }
-
+      if (!user.is_verified) {
+        return res.status(403).json({
+          success: false,
+          message: "User is not verified",
+        });
+      }
       // 4. Cập nhật thông tin đăng nhập
       user.last_login = new Date();
       user.login_count += 1;

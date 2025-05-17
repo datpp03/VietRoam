@@ -120,6 +120,7 @@ async unfollowUser(req, res) {
     res.status(500).json({ success: false, message: "Cannot unfollow user", error: error.message });
   }
 }
+
   async searchUsers(req, res) {
     try {
       const { q } = req.query;
@@ -162,16 +163,18 @@ async unfollowUser(req, res) {
     try {
       const { q } = req.query;
       
-      if (!q) {
-        return res.status(400).json({ success: false, message: "Query is required" });
-      }
+      const query = q
+        ? {
+            $or: [
+              { full_name: { $regex: q, $options: "i" } },
+              { email: { $regex: q, $options: "i" } },
+            ],
+          }
+        : {};
 
-      const users = await User.find({
-        $or: [
-          { full_name: { $regex: q, $options: "i" } },
-          { email: { $regex: q, $options: "i" } },
-        ],
-      }).select("_id full_name profile_picture email is_verified");
+      const users = await User.find(query).select(
+        "_id full_name profile_picture email is_verified role travel_interests location followers_count following_count"
+      );
 
       res.json({ success: true, users });
     } catch (error) {
@@ -213,8 +216,6 @@ async unfollowUser(req, res) {
     try {
       const { id } = req.params;
       const currentUserId = req.user.id;
-      
-      // Chỉ cho phép người dùng cập nhật thông tin của chính họ
       if (id !== currentUserId) {
         return res.status(403).json({ success: false, message: "Unauthorized to update this user" });
       }
@@ -255,6 +256,67 @@ async unfollowUser(req, res) {
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+  }
+
+  async toggleVerification(req, res) {
+    try {
+      const { id } = req.params;
+      const currentUserId = req.user.id;
+
+      // Chỉ admin mới được thay đổi trạng thái xác minh
+      const currentUser = await User.findById(currentUserId);
+      if (!currentUser || currentUser.role) {
+        return res.status(403).json({ success: false, message: "Chỉ admin mới có quyền thay đổi trạng thái xác minh" });
+      }
+
+      const userToToggle = await User.findById(id);
+      if (!userToToggle) {
+        return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+      }
+
+      // Đảo ngược trạng thái is_verified
+      userToToggle.is_verified = !userToToggle.is_verified;
+      await userToToggle.save();
+
+      res.json({ 
+        success: true, 
+        message: userToToggle.is_verified ? "Mở khóa tài khoản thành công" : "Khóa tài khoản thành công",
+        user: userToToggle 
+      });
+    } catch (error) {
+      console.error("Lỗi khi thay đổi trạng thái xác minh:", error);
+      res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
+    }
+  }
+
+  async deleteUser(req, res) {
+    try {
+      const { id } = req.params;
+      const currentUserId = req.user.id;
+
+      // Chỉ admin mới được xóa người dùng
+      const currentUser = await User.findById(currentUserId);
+      if (!currentUser || !currentUser.role) {
+        return res.status(403).json({ success: false, message: "Chỉ admin mới có quyền xóa người dùng" });
+      }
+
+      const userToDelete = await User.findById(id);
+      if (!userToDelete) {
+        return res.status(404).json({ success: false, message: "Không tìm thấy người dùng" });
+      }
+
+      // Xóa các bản ghi liên quan
+      await Follow.deleteMany({ $or: [{ follower: id }, { following: id }] });
+      await Notification.deleteMany({ $or: [{ user_id: id }, { sender_id: id }] });
+
+      // Xóa người dùng
+      await User.findByIdAndDelete(id);
+
+      res.json({ success: true, message: "Xóa người dùng thành công" });
+    } catch (error) {
+      console.error("Lỗi khi xóa người dùng:", error);
+      res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
     }
   }
 }

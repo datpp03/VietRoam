@@ -29,7 +29,6 @@ function Login() {
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
       const data = await loginWithGoogle(idToken);
-      console.log('Đăng nhập thành công:', data);
       
       login(data.user, data.token, data.following);
       navigate('/');

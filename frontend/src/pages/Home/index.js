@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react"
 import PostList from "~/components/PostList"
 import { useAuth } from "~/contexts/AuthContext"
@@ -16,6 +17,7 @@ const Home = () => {
         setLoading(true)
         if (user && user.id) {
           const postData = await getPostsIsLogin(user.id)
+          console.log('1')
           
           const fetchedPosts = postData.posts || []
           const userIds = [...new Set(fetchedPosts.map(post => post.user_id))]

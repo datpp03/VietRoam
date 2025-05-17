@@ -11,7 +11,9 @@ import {
   faKeyboard,
   faSignOut,
   faUser,
+  faShield,
 } from "@fortawesome/free-solid-svg-icons";
+
 import { Link, useNavigate } from "react-router-dom";
 import Tippy from "@tippyjs/react";
 import "tippy.js/dist/tippy.css";
@@ -52,7 +54,14 @@ const MENU_ITEMS = [
     // title: "Keyboard shortcuts",
   },
 ];
+const ADMIN_ITEMS = [
+  {
+    icon: <FontAwesomeIcon icon={faShield} />,
+    title: "Admin",
+    to: "/admin",
 
+  },
+];
 function Header() {
   const { user, logout, loading } = useAuth();
   const { unreadCount, fetchNotifications } = useNotifications();
@@ -109,6 +118,7 @@ function Header() {
           type: "logout",
           separate: true,
         },
+        ...(user && !user?.role ? ADMIN_ITEMS : []),
       ]
     : MENU_ITEMS;
 

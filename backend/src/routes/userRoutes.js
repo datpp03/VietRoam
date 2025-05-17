@@ -24,6 +24,8 @@ router.post("/unfollow", authMiddleware, userController.unfollowUser);
 router.get("/:id", authMiddleware, userController.getUser);
 router.get("/profile/:username", userController.getProfileUser);
 router.post("/batch", userController.getUsersBatch);
-router.put("/:id",authMiddleware,upload.single("profile_picture"),userController.updateUser);
+router.put("/:id", authMiddleware, upload.single("profile_picture"), userController.updateUser);
+router.delete("/:id", authMiddleware, userController.deleteUser);
+router.patch("/:id/toggle-verification", authMiddleware, userController.toggleVerification);
 
 export default router;

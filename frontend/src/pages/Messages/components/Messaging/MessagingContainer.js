@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import styles from "./MessagingContainer.module.scss";
 import classNames from "classnames/bind";
@@ -268,7 +269,7 @@ const MessagingContainer = () => {
 
         if (!users[otherUserId]) {
           axios
-            .get(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/users/${otherUserId}`, {
+            .get(`http://localhost:3001/api/users/${otherUserId}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             .then((response) => {
@@ -317,7 +318,7 @@ const MessagingContainer = () => {
     if (!partner) {
       try {
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/users/${partnerId}`,
+          `http://localhost:3001/api/users/${partnerId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }

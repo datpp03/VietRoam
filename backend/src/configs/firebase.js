@@ -1,6 +1,4 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("./travelblog-e4f43-firebase-adminsdk-fbsvc-e63eb0f485.json"); // Tải từ Firebase Console
-
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,

@@ -5,7 +5,7 @@ import NotificationItem from "./NotificationItem"
 import styles from "./NotificationList.module.scss"
 import classNames from "classnames/bind"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faHeart, faComment, faUserPlus, faAt, faBell } from "@fortawesome/free-solid-svg-icons"
+import { faHeart, faComment, faUserPlus, faBell } from "@fortawesome/free-solid-svg-icons"
 
 const cx = classNames.bind(styles)
 

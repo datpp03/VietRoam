@@ -1,5 +1,5 @@
 import classNames from "classnames/bind";
-import { MessageCircle, Share2 } from "lucide-react";
+import { MessageCircle, MapPin } from "lucide-react";
 import styles from "./PostFooter.module.scss";
 import LikeButton from "../LikeButton";
 
@@ -18,6 +18,11 @@ const PostFooter = ({ post, user, onToggleComments, commentsCount }) => {
     setTimeout(() => heartAnimation.remove(), 1000);
   };
 
+  // Tạo URL Google Maps từ tọa độ [longitude, latitude]
+  const googleMapsUrl = post.location?.coordinates
+    ? `https://www.google.com/maps/dir/?api=1&destination=${post.location.coordinates[1]},${post.location.coordinates[0]}`
+    : "#";
+
   return (
     <div className={cx("post-footer")}>
       <div className={cx("interaction-buttons")}>
@@ -31,9 +36,15 @@ const PostFooter = ({ post, user, onToggleComments, commentsCount }) => {
           <MessageCircle className={cx("interaction-icon")} size={20} />
           <span className={cx("interaction-count")}>{commentsCount}</span>
         </button>
-        <button className={cx("interaction-button")}>
-          <Share2 className={cx("interaction-icon")} size={20} />
-        </button>
+        <a
+          href={googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cx("interaction-button")}
+          title="Open in Google Maps"
+        >
+          <MapPin className={cx("interaction-icon")} size={20} />
+        </a>
       </div>
     </div>
   );

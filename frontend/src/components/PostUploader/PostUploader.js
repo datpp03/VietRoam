@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import { Icon } from "leaflet";
@@ -51,26 +52,8 @@ const Modal = ({ isOpen, onClose, type, title, message }) => {
 };
 
 // Component xử lý chức năng "Vị trí của tôi"
-function LocationMarker({ setPosition, setLocationInfo }) {
+function LocationMarker({ setPosition, setLocationInfo, fetchLocationInfo }) {
   const map = useMap();
-
-  const fetchLocationInfo = async (pos) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos[0]}&lon=${pos[1]}`
-      );
-      const data = await response.json();
-      const address = data.display_name;
-      const name = data.name || data.address.amenity || data.address.road || "Vị trí của tôi";
-      setLocationInfo({
-        name,
-        address,
-        coordinates: [pos[1], pos[0]],
-      });
-    } catch (err) {
-      console.error("Lỗi khi lấy thông tin vị trí:", err);
-    }
-  };
 
   const locateMe = () => {
     map.locate().on("locationfound", (e) => {
@@ -90,7 +73,7 @@ function LocationMarker({ setPosition, setLocationInfo }) {
 }
 
 // Component chọn vị trí trên bản đồ
-function LocationPicker({ setPosition, position, setLocationInfo }) {
+function LocationPicker({ setPosition, position, setLocationInfo, fetchLocationInfo }) {
   const map = useMapEvents({
     click: (e) => {
       const newPosition = [e.latlng.lat, e.latlng.lng];
@@ -98,24 +81,6 @@ function LocationPicker({ setPosition, position, setLocationInfo }) {
       fetchLocationInfo(newPosition);
     },
   });
-
-  const fetchLocationInfo = async (pos) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos[0]}&lon=${pos[1]}`
-      );
-      const data = await response.json();
-      const address = data.display_name;
-      const name = data.name || data.address.amenity || data.address.road || "Vị trí đã chọn";
-      setLocationInfo({
-        name,
-        address,
-        coordinates: [pos[1], pos[0]],
-      });
-    } catch (err) {
-      console.error("Lỗi khi lấy thông tin vị trí:", err);
-    }
-  };
 
   return position ? <Marker position={position} icon={customIcon} /> : null;
 }
@@ -142,6 +107,39 @@ const PostUploader = () => {
   const videoInputRef = useRef(null);
   const contentRef = useRef(null);
 
+  // Hàm lấy thông tin vị trí từ tọa độ
+  const fetchLocationInfo = async (pos) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos[0]}&lon=${pos[1]}`
+      );
+      const data = await response.json();
+      const address = data.display_name;
+      // Ưu tiên lấy tên từ các trường cụ thể
+      const name =
+        data.address.city ||
+        data.address.town ||
+        data.address.village ||
+        data.address.hamlet ||
+        data.address.suburb ||
+        data.address.neighbourhood ||
+        data.address.road ||
+        "Vị trí không xác định";
+      setLocationInfo({
+        name,
+        address,
+        coordinates: [pos[1], pos[0]],
+      });
+    } catch (err) {
+      console.error("Lỗi khi lấy thông tin vị trí:", err);
+      setLocationInfo({
+        name: "Vị trí không xác định",
+        address: "Không thể lấy thông tin vị trí",
+        coordinates: [pos[1], pos[0]],
+      });
+    }
+  };
+
   // Hàm đóng modal
   const closeModal = () => {
     setModal({ isOpen: false, type: "", title: "", message: "" });
@@ -151,6 +149,7 @@ const PostUploader = () => {
   useEffect(() => {
     const getDefaultLocation = async () => {
       setIsLoadingLocation(true);
+      const defaultPosition = [21.0278, 105.8342]; // Hà Nội
       try {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -158,49 +157,27 @@ const PostUploader = () => {
               const newPosition = [pos.coords.latitude, pos.coords.longitude];
               setPosition(newPosition);
               await fetchLocationInfo(newPosition);
-              setIsLoadingLocation(false);
             },
-            async (err) => {
-              console.error("Lỗi khi lấy vị trí:", err);
-              const defaultPosition = [21.0278, 105.8342]; // Hà Nội
+            async () => {
               setPosition(defaultPosition);
               await fetchLocationInfo(defaultPosition);
-              setIsLoadingLocation(false);
             }
           );
         } else {
-          console.log("Trình duyệt không hỗ trợ Geolocation");
-          const defaultPosition = [21.0278, 105.8342]; // Hà Nội
           setPosition(defaultPosition);
           await fetchLocationInfo(defaultPosition);
-          setIsLoadingLocation(false);
         }
       } catch (error) {
         console.error("Lỗi khi lấy vị trí mặc định:", error);
+        setPosition(defaultPosition);
+        await fetchLocationInfo(defaultPosition);
+      } finally {
         setIsLoadingLocation(false);
       }
     };
 
     getDefaultLocation();
   }, []);
-
-  const fetchLocationInfo = async (pos) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos[0]}&lon=${pos[1]}`
-      );
-      const data = await response.json();
-      const address = data.display_name;
-      const name = data.name || data.address.amenity || data.address.road || "Vị trí hiện tại";
-      setLocationInfo({
-        name,
-        address,
-        coordinates: [pos[1], pos[0]],
-      });
-    } catch (err) {
-      console.error("Lỗi khi lấy thông tin vị trí:", err);
-    }
-  };
 
   // Tự động điều chỉnh chiều cao textarea
   useEffect(() => {
@@ -227,8 +204,6 @@ const PostUploader = () => {
   // Xử lý upload ảnh
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-
-    // Kiểm tra nếu đã chọn video trước đó
     if (mediaType === "video") {
       setModal({
         isOpen: true,
@@ -239,8 +214,7 @@ const PostUploader = () => {
       return;
     }
 
-    // Kiểm tra số lượng ảnh tối đa
-    const newImagesCount = files.length;
+    const newImagesCount = files.filter((file) => file.type.startsWith("image/")).length;
     if (media.length + newImagesCount > 50) {
       setModal({
         isOpen: true,
@@ -263,7 +237,7 @@ const PostUploader = () => {
           {
             type: "image",
             url: event.target.result,
-            file: file,
+            file,
             description: "",
           },
         ]);
@@ -275,8 +249,6 @@ const PostUploader = () => {
   // Xử lý upload video
   const handleVideoUpload = (e) => {
     const files = Array.from(e.target.files);
-
-    // Kiểm tra nếu đã chọn ảnh trước đó
     if (mediaType === "image") {
       setModal({
         isOpen: true,
@@ -287,8 +259,8 @@ const PostUploader = () => {
       return;
     }
 
-    // Kiểm tra số lượng video tối đa
-    if (media.length >= 1) {
+    const validVideos = files.filter((file) => file.type.startsWith("video/"));
+    if (media.length + validVideos.length > 1) {
       setModal({
         isOpen: true,
         type: "error",
@@ -300,9 +272,7 @@ const PostUploader = () => {
 
     setMediaType("video");
 
-    files.forEach((file) => {
-      if (!file.type.startsWith("video/")) return;
-
+    validVideos.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const video = document.createElement("video");
@@ -323,8 +293,8 @@ const PostUploader = () => {
               {
                 type: "video",
                 url: event.target.result,
-                file: file,
-                thumbnail: thumbnail,
+                file,
+                thumbnail,
                 description: "",
               },
             ]);
@@ -339,7 +309,6 @@ const PostUploader = () => {
   const removeMedia = (index) => {
     setMedia((prev) => {
       const newMedia = prev.filter((_, i) => i !== index);
-      // Nếu xóa hết media, reset mediaType
       if (newMedia.length === 0) {
         setMediaType(null);
       }
@@ -415,21 +384,21 @@ const PostUploader = () => {
     setIsSubmitting(true);
 
     const formData = new FormData();
-    formData.append('content', content);
+    formData.append("content", content);
     media.forEach((item) => {
-      formData.append('media', item.file);
+      formData.append("media", item.file);
     });
     if (locationInfo) {
-      formData.append('location', JSON.stringify(locationInfo));
+      formData.append("location", JSON.stringify(locationInfo));
     }
     if (tags.length > 0) {
-      formData.append('tags', JSON.stringify(tags));
+      formData.append("tags", JSON.stringify(tags));
     }
-    formData.append('status', status);
-    formData.append('visibility', visibility);
+    formData.append("status", status);
+    formData.append("visibility", visibility);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const response = await createPost(formData, token);
 
       setModal({
@@ -450,12 +419,12 @@ const PostUploader = () => {
       setShowMap(false);
       setMediaType(null);
     } catch (error) {
-      console.error('Lỗi khi đăng bài:', error);
+      console.error("Lỗi khi đăng bài:", error);
       setModal({
         isOpen: true,
         type: "error",
         title: "Lỗi đăng bài",
-        message: error.response?.data?.message || 'Lỗi khi đăng bài viết',
+        message: error.response?.data?.message || "Lỗi khi đăng bài viết",
       });
     } finally {
       setIsSubmitting(false);
@@ -466,7 +435,6 @@ const PostUploader = () => {
     <div className={cx("post-uploader")}>
       <div className={cx("post-uploader-container")}>
         <h2 className={cx("title")}>Tạo bài viết mới</h2>
-
         <form onSubmit={handleSubmit} className={cx("form")}>
           {/* Phần nội dung */}
           <div className={cx("content-section")}>
@@ -541,10 +509,12 @@ const PostUploader = () => {
 
           {/* Phần vị trí */}
           <div className={cx("location-section")}>
-          <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               className={cx("location-button", { active: locationInfo })}
               onClick={toggleMap}
+              onKeyDown={(e) => e.key === "Enter" && toggleMap()}
             >
               <MapPin size={20} />
               <span>
@@ -562,7 +532,7 @@ const PostUploader = () => {
                   <X size={16} />
                 </button>
               )}
-            </button>
+            </div>
             {showMap && (
               <div className={cx("map-container")}>
                 <MapContainer
@@ -579,10 +549,12 @@ const PostUploader = () => {
                     setPosition={setPosition}
                     position={position}
                     setLocationInfo={setLocationInfo}
+                    fetchLocationInfo={fetchLocationInfo}
                   />
                   <LocationMarker
                     setPosition={setPosition}
                     setLocationInfo={setLocationInfo}
+                    fetchLocationInfo={fetchLocationInfo}
                   />
                 </MapContainer>
                 {locationInfo && (

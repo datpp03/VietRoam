@@ -15,7 +15,7 @@ export const useSocketConnection = (userId, token) => {
 
     console.log("useSocketConnection: Initializing socket with userId:", userId);
 
-    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001", {
+    const newSocket = io("http://localhost:3001", {
       auth: { token },
       reconnection: true,
       reconnectionAttempts: 5,

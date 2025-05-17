@@ -12,6 +12,11 @@ import Search from '~/pages/Search';
 import Live from '~/pages/Live';
 import Login from '~/pages/Login';
 import Messages from '~/pages/Messages';
+//
+import AdminHome from '~/adminPages/Home';
+import AccountManagement from '~/adminPages/AccountManagement';
+
+
 
 // Public routes
 const publicRoutes = [
@@ -26,5 +31,9 @@ const publicRoutes = [
 ];
 
 const privateRoutes = [];
+const adminRoutes = [
+    { path: config.adminRoutes.home, component: AdminHome },
+    { path: config.adminRoutes.user, component: AccountManagement },
+];
 
-export { publicRoutes, privateRoutes };
+export { publicRoutes, privateRoutes, adminRoutes };
